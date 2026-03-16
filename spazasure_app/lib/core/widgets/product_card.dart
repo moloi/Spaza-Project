@@ -1,0 +1,154 @@
+import 'package:flutter/material.dart';
+import 'package:spazasure_app/models/models.dart';
+import 'package:spazasure_app/core/constants/app_colors.dart';
+import 'package:spazasure_app/core/constants/app_text_styles.dart';
+
+class ProductCard extends StatelessWidget {
+  final Product product;
+  final VoidCallback? onTap;
+  final VoidCallback? onAddToCart;
+
+  const ProductCard({
+    super.key,
+    required this.product,
+    this.onTap,
+    this.onAddToCart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image placeholder
+            Container(
+              height: 120,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Stack(
+                children: [
+                  Center(
+                    child: Icon(
+                      Icons.inventory_2_outlined,
+                      size: 48,
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  if (product.discountPrice != null)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${(((product.price - product.discountPrice!) / product.price) * 100).round()}% OFF',
+                          style: AppTextStyles.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  if (!product.isAvailable)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black45,
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      ),
+                      child: Center(
+                        child: Text('Out of Stock', style: AppTextStyles.subtitle.copyWith(color: Colors.white)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    style: AppTextStyles.bodySmall.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    product.supplierName,
+                    style: AppTextStyles.caption,
+                    maxLines: 1,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.star, size: 14, color: AppColors.warning),
+                      const SizedBox(width: 2),
+                      Text('${product.rating}', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
+                      Text(' (${product.reviewCount})', style: AppTextStyles.caption),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (product.discountPrice != null) ...[
+                            Text(
+                              'R${product.price.toStringAsFixed(2)}',
+                              style: AppTextStyles.caption.copyWith(
+                                decoration: TextDecoration.lineThrough,
+                                color: AppColors.textHint,
+                              ),
+                            ),
+                            Text('R${product.discountPrice!.toStringAsFixed(2)}', style: AppTextStyles.priceSmall),
+                          ] else
+                            Text('R${product.price.toStringAsFixed(2)}', style: AppTextStyles.priceSmall),
+                        ],
+                      ),
+                      if (product.isAvailable)
+                        GestureDetector(
+                          onTap: onAddToCart,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.add, color: Colors.white, size: 18),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
