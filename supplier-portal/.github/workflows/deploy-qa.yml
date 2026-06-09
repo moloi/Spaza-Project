@@ -1,0 +1,48 @@
+name: Deploy to QA
+
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: qa
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for QA
+        run: npm run build:qa
+
+      - name: Deploy to QA Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.QA_HOST }}
+          username: root
+          key: ${{ secrets.QA_SSH_KEY }}
+          source: "dist/*"
+          target: "/var/www/spazasure"
+          strip_components: 1
+          overwrite: true
+          rm: true
+
+      - name: Restart Nginx on QA
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.QA_HOST }}
+          username: root
+          key: ${{ secrets.QA_SSH_KEY }}
+          script: |
+            systemctl restart nginx
+            echo "QA deployment complete!"
