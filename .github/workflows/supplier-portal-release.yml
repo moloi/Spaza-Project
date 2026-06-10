@@ -1,4 +1,4 @@
-name: Supplier Portal - Deploy to Release (Staging)
+name: Supplier Portal - Release Validation
 
 on:
   push:
@@ -12,8 +12,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build Frontend (Release)
+  validate:
+    name: Build & Validate for Production Readiness
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,47 +36,15 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      - name: Build for Production (release validation)
+      - name: Build for Production (validation)
         run: npm run build:prod
 
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: supplier-portal-release-build
-          path: supplier-portal/dist/
-          retention-days: 14
-
-  deploy:
-    name: Deploy to Staging Server
-    needs: build
-    runs-on: ubuntu-latest
-    environment: release
-
-    steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: supplier-portal-release-build
-          path: dist/
-
-      - name: Deploy to Release Server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.RELEASE_HOST }}
-          username: ${{ secrets.RELEASE_USERNAME }}
-          key: ${{ secrets.RELEASE_SSH_KEY }}
-          source: "dist/*"
-          target: "/var/www/spazasure-supplier"
-          strip_components: 1
-          overwrite: true
-          rm: true
-
-      - name: Restart Nginx
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.RELEASE_HOST }}
-          username: ${{ secrets.RELEASE_USERNAME }}
-          key: ${{ secrets.RELEASE_SSH_KEY }}
-          script: |
-            systemctl restart nginx
-            echo "Supplier Portal - Release deployment complete"
+      - name: Verify build output
+        run: |
+          if [ -d "dist" ]; then
+            echo "Build passed - ready for production"
+            du -sh dist/
+          else
+            echo "Build failed"
+            exit 1
+          fi
