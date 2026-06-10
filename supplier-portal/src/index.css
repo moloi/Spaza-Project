@@ -725,3 +725,145 @@ input:focus, select:focus, textarea:focus, button:focus-visible {
   transform: scale(1.01);
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   DASHBOARD — WORLD CLASS ANIMATIONS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Floating particles */
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0) translateX(0) scale(1); opacity: 0.6; }
+  25% { transform: translateY(-12px) translateX(4px) scale(1.1); opacity: 0.9; }
+  50% { transform: translateY(-6px) translateX(-3px) scale(0.95); opacity: 0.7; }
+  75% { transform: translateY(-18px) translateX(6px) scale(1.05); opacity: 0.8; }
+}
+
+@keyframes floatMedium {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.5; }
+  33% { transform: translateY(-10px) rotate(5deg); opacity: 0.8; }
+  66% { transform: translateY(-16px) rotate(-3deg); opacity: 0.6; }
+}
+
+@keyframes floatFast {
+  0%, 100% { transform: translateY(0) scale(1); opacity: 0.4; }
+  50% { transform: translateY(-20px) scale(1.2); opacity: 0.8; }
+}
+
+.animate-float-slow {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+.animate-float-medium {
+  animation: floatMedium 4s ease-in-out infinite;
+}
+.animate-float-fast {
+  animation: floatFast 3s ease-in-out infinite;
+}
+
+/* Dashboard card entrance — more dramatic stagger */
+.dashboard-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.dashboard-stagger > *:nth-child(2) { animation-delay: 0.12s; }
+.dashboard-stagger > *:nth-child(3) { animation-delay: 0.19s; }
+.dashboard-stagger > *:nth-child(4) { animation-delay: 0.26s; }
+
+/* Pipeline bar animation */
+@keyframes pipelineGrow {
+  from { width: 0; }
+}
+
+.animate-pipeline-bar {
+  animation: pipelineGrow 1s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+}
+
+/* Chart line draw animation */
+@keyframes chartReveal {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.animate-chart-reveal {
+  animation: chartReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+/* Glow pulse for pending items */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+}
+
+.animate-glow-pulse {
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+/* Number pop animation */
+@keyframes numberPop {
+  0% { transform: scale(0.5) translateY(10px); opacity: 0; }
+  60% { transform: scale(1.08) translateY(-2px); }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.animate-number-pop {
+  animation: numberPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Hover shine effect for cards */
+@keyframes cardShine {
+  from { transform: translateX(-100%) skewX(-15deg); }
+  to { transform: translateX(200%) skewX(-15deg); }
+}
+
+.group:hover .animate-shine {
+  animation: cardShine 0.8s ease-out;
+}
+
+/* Smooth gradient background animation for hero */
+@keyframes heroGradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Upgrade banner shimmer */
+@keyframes upgradeBannerShimmer {
+  0% { transform: translateX(-100%) skewX(-20deg); }
+  100% { transform: translateX(300%) skewX(-20deg); }
+}
+
+.animate-upgrade-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+  animation: upgradeBannerShimmer 4s ease-in-out infinite;
+}
+
+/* Compliance card hover glow */
+.compliance-card {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.compliance-card:hover {
+  transform: translateY(-2px) scale(1.02);
+}
+
+/* Table row entrance */
+@keyframes tableRowSlide {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-table-row {
+  animation: tableRowSlide 0.4s ease-out both;
+}
+.animate-table-row:nth-child(1) { animation-delay: 0.1s; }
+.animate-table-row:nth-child(2) { animation-delay: 0.15s; }
+.animate-table-row:nth-child(3) { animation-delay: 0.2s; }
+.animate-table-row:nth-child(4) { animation-delay: 0.25s; }
+.animate-table-row:nth-child(5) { animation-delay: 0.3s; }
