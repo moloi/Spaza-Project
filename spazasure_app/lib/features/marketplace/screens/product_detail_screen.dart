@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:spazasure_app/core/constants/app_colors.dart';
 import 'package:spazasure_app/core/constants/app_text_styles.dart';
 import 'package:spazasure_app/core/widgets/custom_button.dart';
 import 'package:spazasure_app/models/models.dart';
+import 'package:spazasure_app/providers/cart_provider.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   const ProductDetailScreen({super.key});
@@ -187,12 +189,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   text: 'Add to Cart',
                   icon: Icons.shopping_cart_outlined,
                   onPressed: () {
+                    context.read<CartProvider>().add(product, _quantity);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('$_quantity × ${product.name} added to cart'),
                         backgroundColor: AppColors.primary,
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        action: SnackBarAction(
+                          label: 'VIEW CART',
+                          textColor: Colors.white,
+                          onPressed: () => Navigator.pushNamed(context, '/cart'),
+                        ),
                       ),
                     );
                     Navigator.pop(context);

@@ -24,7 +24,7 @@ class AppColors {
   static const surface = Color(0xFFFFFFFF);
   static const textPrimary = Color(0xFF212121);
   static const textSecondary = Color(0xFF757575);
-  static const textHint = Color(0xFFBDBDBD);
+  static const textHint = Color(0xFF9E9E9E);
   static const divider = Color(0xFFE0E0E0);
   static const disabled = Color(0xFF9E9E9E);
 

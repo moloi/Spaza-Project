@@ -71,8 +71,34 @@ class AppTheme {
             borderSide: const BorderSide(color: AppColors.error),
           ),
           hintStyle: GoogleFonts.poppins(
-            color: AppColors.textHint,
+            color: AppColors.textSecondary,
             fontSize: 14,
+          ),
+          labelStyle: GoogleFonts.poppins(
+            color: AppColors.textPrimary,
+            fontSize: 14,
+          ),
+        ),
+        // Ensure typed text is always visible (dark on white background)
+        textSelectionTheme: const TextSelectionThemeData(
+          cursorColor: AppColors.primary,
+          selectionColor: AppColors.primaryLight,
+          selectionHandleColor: AppColors.primary,
+        ),
+        textTheme: GoogleFonts.poppinsTextTheme().apply(
+          bodyColor: AppColors.textPrimary,
+          displayColor: AppColors.textPrimary,
+        ).copyWith(
+          // Explicitly set bodyLarge so TextField input text is always dark
+          bodyLarge: GoogleFonts.poppins(
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textPrimary,
+          ),
+          bodyMedium: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textPrimary,
           ),
         ),
         cardTheme: CardThemeData(

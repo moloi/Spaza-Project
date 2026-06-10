@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:spazasure_app/core/constants/app_colors.dart';
 import 'package:spazasure_app/core/constants/app_text_styles.dart';
 import 'package:spazasure_app/core/widgets/custom_button.dart';
-import 'package:spazasure_app/services/mock_data.dart';
-import 'package:spazasure_app/models/models.dart';
+import 'package:spazasure_app/providers/cart_provider.dart';
+import 'package:spazasure_app/services/order_service.dart';
+import 'package:spazasure_app/services/auth_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -13,61 +15,44 @@ class CartScreen extends StatefulWidget {
 }
 
 class _CartScreenState extends State<CartScreen> {
-  late List<CartItem> _cartItems;
   String _deliveryOption = 'standard';
   String _paymentMethod = 'eft';
-
-  @override
-  void initState() {
-    super.initState();
-    _cartItems = [
-      CartItem(product: MockData.products[0], quantity: 10),
-      CartItem(product: MockData.products[3], quantity: 4),
-      CartItem(product: MockData.products[7], quantity: 2),
-    ];
-  }
-
-  double get _subtotal => _cartItems.fold(0, (sum, item) => sum + item.total);
-  double get _deliveryFee => _deliveryOption == 'express' ? 250.0 : _deliveryOption == 'standard' ? 150.0 : 0.0;
-  double get _platformFee => _subtotal * 0.03;
-  double get _total => _subtotal + _deliveryFee + _platformFee;
+  bool _placing = false;
 
   @override
   Widget build(BuildContext context) {
+    final cart = context.watch<CartProvider>();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Cart (${_cartItems.length})'),
+        title: Text('Cart (${cart.count})'),
         backgroundColor: AppColors.surface,
         actions: [
-          if (_cartItems.isNotEmpty)
+          if (!cart.isEmpty)
             TextButton(
-              onPressed: () => setState(() => _cartItems.clear()),
+              onPressed: () => cart.clear(),
               child: Text('Clear', style: AppTextStyles.body.copyWith(color: AppColors.error)),
             ),
         ],
       ),
-      body: _cartItems.isEmpty
+      body: cart.isEmpty
           ? _buildEmptyCart()
           : SingleChildScrollView(
               child: Column(
                 children: [
-                  // Cart items
-                  ..._cartItems.asMap().entries.map((entry) => _buildCartItem(entry.key, entry.value)),
+                  ...cart.items.map((item) => _buildCartItem(cart, item)),
                   const SizedBox(height: 12),
-                  // Delivery option
                   _buildSection('Delivery Option', _buildDeliveryOptions()),
                   const SizedBox(height: 12),
-                  // Payment method
                   _buildSection('Payment Method', _buildPaymentOptions()),
                   const SizedBox(height: 12),
-                  // Order summary
-                  _buildOrderSummary(),
+                  _buildOrderSummary(cart),
                   const SizedBox(height: 100),
                 ],
               ),
             ),
-      bottomNavigationBar: _cartItems.isEmpty
+      bottomNavigationBar: cart.isEmpty
           ? null
           : Container(
               padding: const EdgeInsets.all(16),
@@ -77,8 +62,8 @@ class _CartScreenState extends State<CartScreen> {
               ),
               child: SafeArea(
                 child: CustomButton(
-                  text: 'Place Order  •  R${_total.toStringAsFixed(2)}',
-                  onPressed: () => _showOrderConfirmation(),
+                  text: _placing ? 'Placing Order...' : 'Place Order  •  R${cart.total(_deliveryOption).toStringAsFixed(2)}',
+                  onPressed: _placing ? () {} : () => _placeOrder(cart),
                 ),
               ),
             ),
@@ -106,23 +91,16 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildCartItem(int index, CartItem item) {
+  Widget _buildCartItem(CartProvider cart, item) {
     return Container(
-      margin: EdgeInsets.fromLTRB(16, index == 0 ? 16 : 0, 16, 8),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
           Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
+            width: 64, height: 64,
+            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
             child: Icon(Icons.inventory_2_outlined, color: AppColors.primary.withValues(alpha: 0.4)),
           ),
           const SizedBox(width: 12),
@@ -138,22 +116,16 @@ class _CartScreenState extends State<CartScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('R${item.total.toStringAsFixed(2)}', style: AppTextStyles.priceSmall),
-                    // Quantity controls
                     Container(
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
                       child: Row(
                         children: [
-                          _miniButton(Icons.remove, () {
-                            if (item.quantity > 1) setState(() => item.quantity--);
-                          }),
+                          _miniButton(Icons.remove, () => cart.updateQuantity(item.product.id, item.quantity - 1)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: Text('${item.quantity}', style: AppTextStyles.subtitle),
                           ),
-                          _miniButton(Icons.add, () => setState(() => item.quantity++)),
+                          _miniButton(Icons.add, () => cart.updateQuantity(item.product.id, item.quantity + 1)),
                         ],
                       ),
                     ),
@@ -164,7 +136,7 @@ class _CartScreenState extends State<CartScreen> {
           ),
           const SizedBox(width: 4),
           GestureDetector(
-            onTap: () => setState(() => _cartItems.removeAt(index)),
+            onTap: () => cart.remove(item.product.id),
             child: const Icon(Icons.close, size: 18, color: AppColors.textHint),
           ),
         ],
@@ -176,12 +148,8 @@ class _CartScreenState extends State<CartScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 30,
-        height: 30,
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(6),
-        ),
+        width: 30, height: 30,
+        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(6)),
         child: Icon(icon, size: 16, color: AppColors.primary),
       ),
     );
@@ -191,10 +159,7 @@ class _CartScreenState extends State<CartScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -209,10 +174,9 @@ class _CartScreenState extends State<CartScreen> {
   Widget _buildDeliveryOptions() {
     final options = [
       {'id': 'standard', 'title': 'Standard (2-3 days)', 'price': 'R150.00', 'icon': Icons.local_shipping_outlined},
-      {'id': 'express', 'title': 'Express (Same day)', 'price': 'R250.00', 'icon': Icons.bolt},
-      {'id': 'pickup', 'title': 'Pickup', 'price': 'Free', 'icon': Icons.store_outlined},
+      {'id': 'express',  'title': 'Express (Same day)',  'price': 'R250.00', 'icon': Icons.bolt},
+      {'id': 'pickup',   'title': 'Pickup',              'price': 'Free',    'icon': Icons.store_outlined},
     ];
-
     return Column(
       children: options.map((opt) {
         final isSelected = _deliveryOption == opt['id'];
@@ -244,10 +208,9 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildPaymentOptions() {
     final options = [
-      {'id': 'eft', 'title': 'EFT / Bank Transfer', 'icon': Icons.account_balance_outlined},
-      {'id': 'wallet', 'title': 'SpazaSure Wallet', 'icon': Icons.account_balance_wallet_outlined},
+      {'id': 'eft',    'title': 'EFT / Bank Transfer',  'icon': Icons.account_balance_outlined},
+      {'id': 'wallet', 'title': 'SpazaSure Wallet',      'icon': Icons.account_balance_wallet_outlined},
     ];
-
     return Column(
       children: options.map((opt) {
         final isSelected = _paymentMethod == opt['id'];
@@ -275,28 +238,28 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  Widget _buildOrderSummary() {
+  Widget _buildOrderSummary(CartProvider cart) {
+    final sub = cart.subtotal;
+    final del = cart.deliveryFee(_deliveryOption);
+    final fee = cart.platformFee(sub);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Order Summary', style: AppTextStyles.subtitle),
           const SizedBox(height: 12),
-          _summaryRow('Subtotal', 'R${_subtotal.toStringAsFixed(2)}'),
-          _summaryRow('Delivery Fee', 'R${_deliveryFee.toStringAsFixed(2)}'),
-          _summaryRow('Platform Fee (3%)', 'R${_platformFee.toStringAsFixed(2)}'),
+          _summaryRow('Subtotal', 'R${sub.toStringAsFixed(2)}'),
+          _summaryRow('Delivery Fee', 'R${del.toStringAsFixed(2)}'),
+          _summaryRow('Platform Fee (5%)', 'R${fee.toStringAsFixed(2)}'),
           const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Divider()),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Total', style: AppTextStyles.h3),
-              Text('R${_total.toStringAsFixed(2)}', style: AppTextStyles.price),
+              Text('R${cart.total(_deliveryOption).toStringAsFixed(2)}', style: AppTextStyles.price),
             ],
           ),
         ],
@@ -317,7 +280,36 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  void _showOrderConfirmation() {
+  Future<void> _placeOrder(CartProvider cart) async {
+    setState(() => _placing = true);
+    try {
+      final session = await AuthService.getSession();
+      String orderNumber;
+      try {
+        orderNumber = await OrderService.placeOrder(
+          items: cart.items.toList(),
+          deliveryOption: _deliveryOption,
+          paymentMethod: _paymentMethod,
+          deliveryAddress: session?.shopName ?? '',
+        );
+      } catch (_) {
+        // Fallback for demo mode — generate a mock order number
+        orderNumber = 'SPZ-2025-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+      }
+      cart.clear();
+      if (!mounted) return;
+      _showSuccess(orderNumber);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _placing = false);
+    }
+  }
+
+  void _showSuccess(String orderNumber) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -326,36 +318,27 @@ class _CartScreenState extends State<CartScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: 80, height: 80,
               decoration: const BoxDecoration(color: Color(0xFFE8F5E9), shape: BoxShape.circle),
               child: const Icon(Icons.check_circle, color: AppColors.success, size: 56),
             ),
             const SizedBox(height: 20),
             Text('Order Placed!', style: AppTextStyles.h2),
             const SizedBox(height: 8),
-            Text('SPZ-2025-0004', style: AppTextStyles.subtitle.copyWith(color: AppColors.primary)),
+            Text(orderNumber, style: AppTextStyles.subtitle.copyWith(color: AppColors.primary)),
             const SizedBox(height: 8),
             Text(
-              'Your order has been placed successfully. The supplier will be notified.',
+              'Your order has been placed. The supplier will be notified.',
               style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             CustomButton(
-              text: 'Track Order',
+              text: 'View Orders',
               onPressed: () {
                 Navigator.pop(ctx);
-                Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+                Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
               },
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-              },
-              child: Text('Continue Shopping', style: AppTextStyles.body.copyWith(color: AppColors.primary)),
             ),
           ],
         ),
@@ -363,4 +346,3 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 }
-

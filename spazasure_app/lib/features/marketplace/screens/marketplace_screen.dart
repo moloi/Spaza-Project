@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:spazasure_app/core/constants/app_colors.dart';
 import 'package:spazasure_app/core/constants/app_text_styles.dart';
 import 'package:spazasure_app/core/widgets/product_card.dart';
+import 'package:spazasure_app/services/product_service.dart';
 import 'package:spazasure_app/services/mock_data.dart';
 import 'package:spazasure_app/models/models.dart';
 
@@ -16,7 +17,27 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
   final _searchController = TextEditingController();
   String? _selectedCategory;
   String _sortBy = 'popular';
-  List<Product> _filteredProducts = MockData.products;
+  List<Product> _filteredProducts = [];
+  List<Category> _categories = [];
+  List<Supplier> _suppliers = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _loading = true);
+    final cats = await ProductService.getCategories();
+    final sups = await ProductService.getSuppliers();
+    setState(() {
+      _categories = cats;
+      _suppliers = sups;
+    });
+    await _filterProducts();
+  }
 
   @override
   void didChangeDependencies() {
@@ -28,30 +49,17 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
     }
   }
 
-  void _filterProducts() {
+  Future<void> _filterProducts() async {
+    setState(() => _loading = true);
+    final products = await ProductService.getProducts(
+      search: _searchController.text.isNotEmpty ? _searchController.text : null,
+      categoryId: _selectedCategory,
+      sort: _sortBy,
+      pageSize: 50,
+    );
     setState(() {
-      _filteredProducts = MockData.products.where((p) {
-        final matchesSearch = _searchController.text.isEmpty ||
-            p.name.toLowerCase().contains(_searchController.text.toLowerCase()) ||
-            p.supplierName.toLowerCase().contains(_searchController.text.toLowerCase());
-        final matchesCategory = _selectedCategory == null || p.categoryId == _selectedCategory;
-        return matchesSearch && matchesCategory;
-      }).toList();
-
-      // Sort
-      switch (_sortBy) {
-        case 'price_low':
-          _filteredProducts.sort((a, b) => a.price.compareTo(b.price));
-          break;
-        case 'price_high':
-          _filteredProducts.sort((a, b) => b.price.compareTo(a.price));
-          break;
-        case 'rating':
-          _filteredProducts.sort((a, b) => b.rating.compareTo(a.rating));
-          break;
-        default:
-          _filteredProducts.sort((a, b) => b.reviewCount.compareTo(a.reviewCount));
-      }
+      _filteredProducts = products;
+      _loading = false;
     });
   }
 
@@ -99,7 +107,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: MockData.categories.length + 1,
+              itemCount: _categories.length + 1,
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return Padding(
@@ -116,7 +124,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
                     ),
                   );
                 }
-                final cat = MockData.categories[index - 1];
+                final cat = _categories[index - 1];
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   child: FilterChip(
@@ -155,7 +163,9 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
           ),
           // Products grid
           Expanded(
-            child: _filteredProducts.isEmpty
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _filteredProducts.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -264,7 +274,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: MockData.categories.map((cat) => FilterChip(
+                children: _categories.map((cat) => FilterChip(
                       label: Text(cat.name),
                       selected: _selectedCategory == cat.id,
                       onSelected: (_) {
@@ -278,7 +288,7 @@ class _MarketplaceScreenState extends State<MarketplaceScreen> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: MockData.suppliers.map((s) => FilterChip(
+                children: _suppliers.map((s) => FilterChip(
                       label: Text(s.companyName),
                       selected: false,
                       onSelected: (_) {},

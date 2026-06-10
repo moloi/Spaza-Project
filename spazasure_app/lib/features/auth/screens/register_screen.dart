@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:spazasure_app/providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -35,6 +37,16 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
   }
 
   void _nextStep() {
+    if (_currentStep == 0) {
+      // Send OTP when moving from owner details to shop details
+      final phone = _phoneController.text.trim();
+      if (phone.isEmpty) return;
+      context.read<AuthProvider>().sendRegisterOtp(phone).catchError((e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()), backgroundColor: const Color(0xFFC62828)),
+        );
+      });
+    }
     if (_currentStep < 2) {
       setState(() => _currentStep++);
       _pageController.nextPage(duration: 500.ms, curve: Curves.easeOutCubic);
@@ -271,66 +283,78 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
             ),
           ).animate().fadeIn(duration: 500.ms).slideX(begin: 0.1, end: 0),
           const SizedBox(height: 24),
+          // Onboarding fee notice
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF57C00).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: const Color(0xFFF57C00).withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF57C00).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.info_outline_rounded,
+                      color: Color(0xFFFFB74D), size: 22),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'One-time Onboarding Fee',
+                        style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFFFFB74D)),
+                      ),
+                      Text(
+                        'R150 — payable after verification',
+                        style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.75)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(delay: 200.ms),
+          const SizedBox(height: 24),
           _PremiumButton(
             text: 'Submit Registration',
             icon: Icons.check_circle_rounded,
-            onPressed: () => _showSuccessDialog(context),
+            onPressed: () => _submit(),
           ),
         ],
       ),
     );
   }
 
-  void _showSuccessDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)]),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 50),
-              )
-                  .animate()
-                  .scale(begin: const Offset(0, 0), duration: 600.ms, curve: Curves.elasticOut),
-              const SizedBox(height: 20),
-              Text('Registration Submitted! 🎉', style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.w700, color: Colors.white), textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              Text(
-                'Your documents are under review.\nWe\'ll notify you once verified.',
-                style: GoogleFonts.poppins(fontSize: 14, color: Colors.white.withValues(alpha: 0.8)),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 28),
-              _PremiumButton(
-                text: 'Continue to Login',
-                icon: Icons.login_rounded,
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-                },
-              ),
-            ],
-          ),
-        ).animate().scale(begin: const Offset(0.8, 0.8), duration: 400.ms, curve: Curves.easeOut).fadeIn(),
-      ),
+  void _submit() async {
+    // Navigate to OTP screen with all registration data
+    Navigator.pushNamed(
+      context,
+      '/otp',
+      arguments: {
+        'phone': _phoneController.text.trim(),
+        'purpose': 'registration',
+        'fullName': _nameController.text.trim(),
+        'shopName': _shopNameController.text.trim(),
+        'address': _addressController.text.trim(),
+        'idNumber': _idController.text.trim(),
+      },
     );
   }
+
 }
 
 class _GlowCircle extends StatelessWidget {

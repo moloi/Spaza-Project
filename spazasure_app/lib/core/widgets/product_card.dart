@@ -66,6 +66,12 @@ class ProductCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                  // Supplier tier badge (top-right)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: _SupplierTierBadge(supplierName: product.supplierName),
+                  ),
                   if (!product.isAvailable)
                     Container(
                       decoration: BoxDecoration(
@@ -152,3 +158,69 @@ class ProductCard extends StatelessWidget {
   }
 }
 
+
+// ─── Supplier Tier Badge ──────────────────────────────────────────────────────
+// Derives a mock tier from the supplier name hash so it's deterministic.
+class _SupplierTierBadge extends StatelessWidget {
+  final String supplierName;
+  const _SupplierTierBadge({required this.supplierName});
+
+  static const _tiers = ['gold', 'silver', 'bronze', 'basic'];
+
+  String get _tier => _tiers[supplierName.length % _tiers.length];
+
+  Color get _color {
+    switch (_tier) {
+      case 'gold':
+        return const Color(0xFFFFC107); // amber
+      case 'silver':
+        return const Color(0xFF9E9E9E); // grey
+      case 'bronze':
+        return const Color(0xFF795548); // brown
+      default:
+        return AppColors.primaryLight; // green for basic
+    }
+  }
+
+  String get _label {
+    switch (_tier) {
+      case 'gold':
+        return '🥇';
+      case 'silver':
+        return '🥈';
+      case 'bronze':
+        return '🥉';
+      default:
+        return '✓';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: '${_tier[0].toUpperCase()}${_tier.substring(1)} Supplier',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: _color.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(6),
+          boxShadow: [
+            BoxShadow(
+              color: _color.withValues(alpha: 0.4),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Text(
+          _label,
+          style: AppTextStyles.caption.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 10,
+          ),
+        ),
+      ),
+    );
+  }
+}
