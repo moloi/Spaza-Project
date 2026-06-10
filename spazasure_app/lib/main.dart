@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
+import 'providers/auth_provider.dart';
+import 'providers/cart_provider.dart';
 import 'features/onboarding/screens/splash_screen.dart';
 import 'features/onboarding/screens/onboarding_screen.dart';
 import 'features/auth/screens/login_screen.dart';
@@ -14,6 +17,12 @@ import 'features/orders/screens/order_detail_screen.dart';
 import 'features/delivery/screens/delivery_tracking_screen.dart';
 import 'features/compliance/screens/compliance_screen.dart';
 import 'features/notifications/screens/notifications_screen.dart';
+import 'features/notifications/screens/report_screen.dart';
+import 'features/wallet/screens/wallet_screen.dart';
+import 'features/group_buy/screens/group_buy_screen.dart';
+import 'features/marketplace/screens/qr_scanner_screen.dart';
+import 'features/orders/screens/rate_delivery_screen.dart';
+import 'core/widgets/logo_page_route.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +31,15 @@ void main() {
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
   ));
-  runApp(const SpazaSureApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()..init()),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+      ],
+      child: const SpazaSureApp(),
+    ),
+  );
 }
 
 class SpazaSureApp extends StatelessWidget {
@@ -35,22 +52,34 @@ class SpazaSureApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       initialRoute: '/splash',
-      routes: {
-        '/splash': (_) => const SplashScreen(),
-        '/onboarding': (_) => const OnboardingScreen(),
-        '/login': (_) => const LoginScreen(),
-        '/otp': (_) => const OtpScreen(),
-        '/register': (_) => const RegisterScreen(),
-        '/home': (_) => const MainShell(),
-        '/marketplace': (_) => const MarketplaceScreen(),
-        '/product': (_) => const ProductDetailScreen(),
-        '/cart': (_) => const CartScreen(),
-        '/order-detail': (_) => const OrderDetailScreen(),
-        '/delivery-tracking': (_) => const DeliveryTrackingScreen(),
-        '/compliance': (_) => const ComplianceScreen(),
-        '/notifications': (_) => const NotificationsScreen(),
+      onGenerateRoute: (settings) {
+        final pages = <String, Widget Function()>{
+          '/splash':            () => const SplashScreen(),
+          '/onboarding':        () => const OnboardingScreen(),
+          '/login':             () => const LoginScreen(),
+          '/otp':               () => const OtpScreen(),
+          '/register':          () => const RegisterScreen(),
+          '/home':              () => const MainShell(),
+          '/marketplace':       () => const MarketplaceScreen(),
+          '/product':           () => const ProductDetailScreen(),
+          '/cart':              () => const CartScreen(),
+          '/order-detail':      () => const OrderDetailScreen(),
+          '/delivery-tracking': () => const DeliveryTrackingScreen(),
+          '/compliance':        () => const ComplianceScreen(),
+          '/notifications':     () => const NotificationsScreen(),
+          '/wallet':            () => const WalletScreen(),
+          '/group-buy':         () => const GroupBuyScreen(),
+          '/qr-scanner':        () => const QrScannerScreen(),
+          '/report':            () => const ReportScreen(),
+          '/rate-delivery':     () => const RateDeliveryScreen(),
+        };
+        final builder = pages[settings.name];
+        if (builder == null) return null;
+        if (settings.name == '/splash') {
+          return MaterialPageRoute(builder: (_) => builder());
+        }
+        return LogoPageRoute.logoRoute(builder());
       },
     );
   }
 }
-

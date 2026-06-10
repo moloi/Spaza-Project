@@ -71,7 +71,7 @@ jobs:
           overwrite: true
           rm: true
 
-      - name: Verify deployment
+      - name: Restart Nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.RELEASE_HOST }}
@@ -79,5 +79,4 @@ jobs:
           key: ${{ secrets.RELEASE_SSH_KEY }}
           script: |
             systemctl restart nginx
-            echo "Supplier Portal - Release/Staging deployment complete"
-            echo "Timestamp: $(date)"
+            echo "Supplier Portal - Release deployment complete"

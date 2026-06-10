@@ -6,6 +6,7 @@ import 'package:spazasure_app/core/constants/app_text_styles.dart';
 import 'package:spazasure_app/core/widgets/status_badge.dart';
 import 'package:spazasure_app/core/widgets/custom_button.dart';
 import 'package:spazasure_app/models/models.dart';
+import 'package:spazasure_app/services/order_service.dart';
 
 class OrderDetailScreen extends StatelessWidget {
   const OrderDetailScreen({super.key});
@@ -207,7 +208,7 @@ class OrderDetailScreen extends StatelessWidget {
                 child: CustomButton(
                   text: 'Confirm Delivery',
                   icon: Icons.check_circle_outline,
-                  onPressed: () => _showConfirmDelivery(context),
+                  onPressed: () => _showConfirmDelivery(context, order),
                 ),
               ),
             )
@@ -298,7 +299,7 @@ class OrderDetailScreen extends StatelessWidget {
     );
   }
 
-  void _showConfirmDelivery(BuildContext context) {
+  void _showConfirmDelivery(BuildContext context, Order order) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -311,16 +312,26 @@ class OrderDetailScreen extends StatelessWidget {
             child: Text('Report Issue', style: AppTextStyles.body.copyWith(color: AppColors.error)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Delivery confirmed! Payment released to supplier.'),
-                  backgroundColor: AppColors.success,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-              Navigator.pop(context);
+              try {
+                await OrderService.confirmDelivery(order.id);
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Delivery confirmed! Payment released to supplier.'),
+                    backgroundColor: AppColors.success,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                Navigator.pushReplacementNamed(context, '/rate-delivery',
+                    arguments: order);
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error),
+                );
+              }
             },
             child: const Text('Confirm'),
           ),
