@@ -71,7 +71,7 @@ jobs:
           overwrite: true
           rm: true
 
-      - name: Verify deployment
+      - name: Restart Nginx
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.QA_HOST }}
@@ -80,4 +80,3 @@ jobs:
           script: |
             systemctl restart nginx
             echo "Supplier Portal - QA deployment complete"
-            echo "Timestamp: $(date)"

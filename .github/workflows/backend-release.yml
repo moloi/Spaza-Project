@@ -1,0 +1,110 @@
+name: Backend - Deploy to Release (Staging)
+
+on:
+  push:
+    branches: [release]
+    paths:
+      - 'SpazaSure.Backend/**'
+      - '!SpazaSure.Backend/**.md'
+
+concurrency:
+  group: backend-release
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: SpazaSure.Backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - run: dotnet restore SpazaSure.Backend.sln
+      - run: dotnet build SpazaSure.Backend.sln --no-restore -c Release
+      - run: dotnet test tests/SpazaSure.Tests/SpazaSure.Tests.csproj --no-build -c Release
+
+  build-and-push:
+    name: Build & Push Docker Images (Release)
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push auth-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./SpazaSure.Backend
+          file: SpazaSure.Backend/src/Services/SpazaSure.AuthService/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/spazasure-auth:release-${{ github.sha }}
+      - name: Build and push product-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./SpazaSure.Backend
+          file: SpazaSure.Backend/src/Services/SpazaSure.ProductService/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/spazasure-product:release-${{ github.sha }}
+      - name: Build and push order-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./SpazaSure.Backend
+          file: SpazaSure.Backend/src/Services/SpazaSure.OrderService/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/spazasure-order:release-${{ github.sha }}
+      - name: Build and push user-service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./SpazaSure.Backend
+          file: SpazaSure.Backend/src/Services/SpazaSure.UserService/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/spazasure-user:release-${{ github.sha }}
+      - name: Build and push gateway
+        uses: docker/build-push-action@v5
+        with:
+          context: ./SpazaSure.Backend
+          file: SpazaSure.Backend/src/Gateway/SpazaSure.Gateway/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/spazasure-gateway:release-${{ github.sha }}
+
+  deploy:
+    name: Deploy to Release Server
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy compose file
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.RELEASE_HOST }}
+          username: ${{ secrets.RELEASE_SSH_USER }}
+          key: ${{ secrets.RELEASE_SSH_KEY }}
+          source: SpazaSure.Backend/docker-compose.qa.yml
+          target: /opt/spazasure/
+          strip_components: 1
+      - name: Deploy containers
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.RELEASE_HOST }}
+          username: ${{ secrets.RELEASE_SSH_USER }}
+          key: ${{ secrets.RELEASE_SSH_KEY }}
+          script: |
+            cd /opt/spazasure
+            printf "QA_DB_PASSWORD=%s\nQA_JWT_SECRET=%s\nQA_AT_API_KEY=%s\nREGISTRY=ghcr.io/${{ github.repository_owner }}\nIMAGE_TAG=release-${{ github.sha }}\n" \
+              "${{ secrets.RELEASE_DB_PASSWORD }}" "${{ secrets.RELEASE_JWT_SECRET }}" "${{ secrets.RELEASE_AT_API_KEY }}" > .env.release
+            docker compose -f docker-compose.qa.yml --env-file .env.release pull
+            docker compose -f docker-compose.qa.yml --env-file .env.release up -d --remove-orphans
+            rm -f .env.release
+            echo "Backend Release deployment complete"

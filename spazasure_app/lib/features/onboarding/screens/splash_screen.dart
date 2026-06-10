@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:spazasure_app/core/constants/app_colors.dart';
+import 'package:spazasure_app/services/auth_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,6 +14,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _particleController;
+  late AnimationController _progressController;
 
   @override
   void initState() {
@@ -21,8 +22,16 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
     _particleController = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
 
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) Navigator.pushReplacementNamed(context, '/onboarding');
+    // Progress bar fills over 3.5 seconds then navigates
+    _progressController = AnimationController(vsync: this, duration: const Duration(milliseconds: 3500));
+    _progressController.forward();
+    _progressController.addStatusListener((status) async {
+      if (status == AnimationStatus.completed && mounted) {
+        final loggedIn = await AuthService.isLoggedIn();
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(
+            context, loggedIn ? '/home' : '/onboarding');
+      }
     });
   }
 
@@ -30,7 +39,15 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   void dispose() {
     _pulseController.dispose();
     _particleController.dispose();
+    _progressController.dispose();
     super.dispose();
+  }
+
+  String _loadingLabel(double value) {
+    if (value < 0.3) return 'Initialising...';
+    if (value < 0.6) return 'Loading marketplace...';
+    if (value < 0.85) return 'Securing connection...';
+    return 'Almost ready...';
   }
 
   @override
@@ -103,10 +120,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(32),
-                      child: Image.network(
-                        'https://scontent-jnb2-1.xx.fbcdn.net/v/t39.30808-1/653020711_1424406249698105_8820913488625060074_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=101&ccb=1-7&_nc_sid=2d3e12&_nc_ohc=YKNgAelbXu4Q7kNvwHbbECs&_nc_oc=Adk6YbLS033Z2M6WAWMa5goUkIclyNKBPWV59PEQvGMd6s7Zx5cvKZw2a8zvFWTYtMQ&_nc_zt=24&_nc_ht=scontent-jnb2-1.xx&_nc_gid=FVVhRzgT-n-01gLVxTgH-w&_nc_ss=8&oh=00_AfxuzTglv_sNi5mN3yzhdvl8b9oBGu2Svdh-10lsHQSjnw&oe=69BE0ACB',
+                      child: Image.asset(
+                        'assets/images/spazasure_logo.jpg',
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.store_rounded, size: 64, color: AppColors.primary),
                       ),
                     ),
                   )
@@ -151,20 +167,35 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
                   const SizedBox(height: 60),
 
-                  // Loading indicator
-                  SizedBox(
-                    width: 160,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: LinearProgressIndicator(
-                        backgroundColor: Colors.white.withValues(alpha: 0.15),
-                        valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
-                        minHeight: 4,
-                      ),
+                  // Loading indicator — fills visibly over 3.5s
+                  AnimatedBuilder(
+                    animation: _progressController,
+                    builder: (_, __) => Column(
+                      children: [
+                        SizedBox(
+                          width: 200,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: LinearProgressIndicator(
+                              value: _progressController.value,
+                              backgroundColor: Colors.white.withValues(alpha: 0.15),
+                              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                              minHeight: 5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _loadingLabel(_progressController.value),
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            color: Colors.white.withValues(alpha: 0.55),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                      .animate()
-                      .fadeIn(delay: 1200.ms, duration: 500.ms),
+                  ).animate().fadeIn(delay: 1000.ms, duration: 500.ms),
                 ],
               ),
             ),
