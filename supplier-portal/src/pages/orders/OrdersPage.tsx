@@ -8,6 +8,7 @@ import { OrderStatusBadge, PaymentStatusBadge, EmptyState } from '../../componen
 import PageLoader from '../../components/ui/PageLoader';
 import clsx from 'clsx';
 import OrderDetailModal from './OrderDetailModal';
+import { useOrderStore } from '../../store/orderStore';
 
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: 'all',        label: 'All Orders'  },
@@ -51,6 +52,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selected, setSelected] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const { fetchPendingCount } = useOrderStore();
 
   useEffect(() => {
     ordersApi.list({ pageSize: 100 })
@@ -76,6 +78,9 @@ export default function OrdersPage() {
       setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
       toast.success(`Order ${status}`);
       if (selected?.id === id) setSelected((prev) => prev ? { ...prev, status } : null);
+      // Refresh the sidebar badge count immediately
+      useOrderStore.setState({ lastFetched: 0 });
+      fetchPendingCount();
     } catch {
       // error toast handled by api interceptor
     }

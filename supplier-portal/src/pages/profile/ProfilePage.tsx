@@ -247,12 +247,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Compliance Alert */}
-      <AlertBanner
-        type="warning"
-        message="Your BEE Certificate is pending review. Upload it to maintain full compliance and avoid account restrictions."
-      />
-
       {/* Tabs */}
       <div className="flex items-center gap-0.5 border-b border-gray-200">
         {tabs.map(({ id, label, icon: Icon }) => (
@@ -352,7 +346,71 @@ export default function ProfilePage() {
       {/* Documents Tab */}
       {activeTab === 'documents' && (
         <div className="card p-6 animate-in">
-          <h2 className="font-bold text-gray-900 mb-5">Compliance Documents</h2>
+          <h2 className="font-bold text-gray-900 mb-4">Compliance Documents</h2>
+
+          {/* Success banner when all docs are approved */}
+          {(() => {
+            const allDocs = ['cipc_certificate', 'tax_clearance', 'bee_certificate', 'product_license'] as const;
+            const allApproved = allDocs.every((dt) => profile.documents.find((d) => d.docType === dt)?.status === 'approved');
+            const hasPending = allDocs.some((dt) => profile.documents.find((d) => d.docType === dt)?.status === 'pending');
+            const hasRejected = allDocs.some((dt) => profile.documents.find((d) => d.docType === dt)?.status === 'rejected');
+            const missingCount = allDocs.filter((dt) => !profile.documents.find((d) => d.docType === dt)).length;
+
+            if (allApproved) {
+              return (
+                <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5">
+                  <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <CheckCircle size={20} className="text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-emerald-800">All documents approved ✓</p>
+                    <p className="text-xs text-emerald-600 mt-0.5">Your compliance is fully up to date. No action needed.</p>
+                  </div>
+                </div>
+              );
+            }
+            if (hasRejected) {
+              return (
+                <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl p-4 mb-5">
+                  <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <XCircle size={20} className="text-red-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-red-800">Some documents were rejected</p>
+                    <p className="text-xs text-red-600 mt-0.5">Please review the rejection reasons below and re-upload corrected documents.</p>
+                  </div>
+                </div>
+              );
+            }
+            if (hasPending) {
+              return (
+                <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5">
+                  <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Clock size={20} className="text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-amber-800">Documents under review</p>
+                    <p className="text-xs text-amber-600 mt-0.5">Your documents have been submitted and are being reviewed. This usually takes 1-2 business days.</p>
+                  </div>
+                </div>
+              );
+            }
+            if (missingCount > 0) {
+              return (
+                <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-5">
+                  <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle size={20} className="text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-800">{missingCount} document{missingCount > 1 ? 's' : ''} still required</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Upload all required documents to complete your verification.</p>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
+
           <div className="space-y-3">
             {(['cipc_certificate', 'tax_clearance', 'bee_certificate', 'product_license'] as const).map((docType) => {
               const doc = profile.documents.find((d) => d.docType === docType);
@@ -381,7 +439,12 @@ export default function ProfilePage() {
                       <p className="font-bold text-sm text-gray-900">{docLabels[docType]}</p>
                       <p className="text-xs text-gray-400 mt-0.5">{docDescriptions[docType]}</p>
                       {expiry && <p className={clsx('text-xs font-semibold mt-0.5', expiry.color)}>{expiry.label}</p>}
-                      {doc?.rejectionReason && <p className="text-xs text-red-500 mt-0.5">{doc.rejectionReason}</p>}
+                      {doc?.rejectionReason && (
+                        <div className="mt-1.5 flex items-start gap-1.5 bg-red-50 border border-red-100 rounded-lg px-2.5 py-1.5">
+                          <XCircle size={11} className="text-red-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-red-600 font-medium">Reason: {doc.rejectionReason}</p>
+                        </div>
+                      )}
                       {!doc && <p className="text-xs text-gray-400 mt-0.5">Not uploaded yet</p>}
                     </div>
                   </div>

@@ -33,15 +33,20 @@ export default function AppLayout() {
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Top Header */}
-        <header className="bg-white/90 backdrop-blur-md border-b border-gray-100 px-6 py-3 flex items-center justify-between flex-shrink-0 sticky top-0 z-30" style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.04)' }}>
+        <header className="bg-white/80 backdrop-blur-xl border-b border-gray-100/80 px-6 py-3 flex items-center justify-between flex-shrink-0 sticky top-0 z-30" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.03), 0 1px 0 rgba(0,0,0,0.02)' }}>
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-gray-400 font-medium">SpazaSure</span>
-            <ChevronRight size={14} className="text-gray-300" />
-            <span className="font-bold text-gray-900">{currentPage}</span>
+          <div className="flex items-center gap-2.5 text-sm">
+            <div className="flex items-center gap-2 bg-gradient-to-r from-primary-50 to-emerald-50 border border-primary-100/60 px-2.5 py-1 rounded-lg">
+              <div className="w-4 h-4 bg-gradient-to-br from-primary to-emerald-600 rounded flex items-center justify-center">
+                <span className="text-[8px] font-black text-white">S</span>
+              </div>
+              <span className="text-xs font-bold text-primary">SpazaSure</span>
+            </div>
+            <ChevronRight size={13} className="text-gray-300" />
+            <span className="font-bold text-gray-900 text-sm">{currentPage}</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* Live Clock */}
             <LiveClock variant="supplier" />
 
@@ -53,13 +58,13 @@ export default function AppLayout() {
 
             {/* User */}
             <div
-              className="flex items-center gap-2.5 pl-3 border-l border-gray-100 cursor-pointer hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2.5 pl-3 ml-1 border-l border-gray-200/60 cursor-pointer group"
               onClick={() => navigate('/profile')}
             >
               <Avatar name={user?.companyName ?? 'S'} size="sm" src={user?.logoUrl ? resolveUploadUrl(user.logoUrl) : undefined} />
               <div className="hidden sm:block">
-                <p className="text-sm font-bold text-gray-900 leading-tight">{user?.companyName}</p>
-                <p className="text-xs text-gray-400 leading-tight">{user?.email}</p>
+                <p className="text-sm font-bold text-gray-900 leading-tight group-hover:text-primary transition-colors">{user?.companyName}</p>
+                <p className="text-[11px] text-gray-400 leading-tight">{user?.email}</p>
               </div>
             </div>
           </div>

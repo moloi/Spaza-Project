@@ -4,17 +4,9 @@ import {
   BarChart2, Settings, LogOut, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
-
-const navItems = [
-  { to: '/admin/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/admin/suppliers',     icon: Users,           label: 'Suppliers & Spaza Owner', badge: 2 },
-  { to: '/admin/documents',     icon: ShieldCheck,     label: 'Documents',    badge: 5 },
-  { to: '/admin/products',      icon: Package,         label: 'Products' },
-  { to: '/admin/orders',        icon: ShoppingCart,    label: 'Orders' },
-  { to: '/admin/analytics',     icon: BarChart2,       label: 'Analytics' },
-  { to: '/admin/settings',      icon: Settings,        label: 'Settings' },
-];
+import { useAdminBadgeStore } from '../../store/adminBadgeStore';
 
 interface AdminSidebarProps {
   collapsed: boolean;
@@ -23,10 +15,28 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps) {
   const { logout } = useAuthStore();
+  const { pendingSuppliers, pendingDocuments, fetchBadges } = useAdminBadgeStore();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Fetch badge counts on mount and poll every 60 seconds
+  useEffect(() => {
+    fetchBadges();
+    const interval = setInterval(fetchBadges, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchBadges]);
+
   const handleLogout = () => { logout(); navigate('/login'); };
+
+  const navItems = [
+    { to: '/admin/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/admin/suppliers',     icon: Users,           label: 'Suppliers & Spaza Owner', badge: pendingSuppliers > 0 ? pendingSuppliers : undefined },
+    { to: '/admin/documents',     icon: ShieldCheck,     label: 'Documents',    badge: pendingDocuments > 0 ? pendingDocuments : undefined },
+    { to: '/admin/products',      icon: Package,         label: 'Products' },
+    { to: '/admin/orders',        icon: ShoppingCart,    label: 'Orders' },
+    { to: '/admin/analytics',     icon: BarChart2,       label: 'Analytics' },
+    { to: '/admin/settings',      icon: Settings,        label: 'Settings' },
+  ];
 
   return (
     <aside
@@ -97,12 +107,12 @@ export default function AdminSidebar({ collapsed, onToggle }: AdminSidebarProps)
               <Icon size={18} className="flex-shrink-0" />
               {!collapsed && <span className="flex-1">{label}</span>}
               {!collapsed && badge && (
-                <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                <span className="bg-blue-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center animate-pulse shadow-sm shadow-blue-400/50">
                   {badge}
                 </span>
               )}
               {collapsed && badge && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-blue-400 rounded-full" />
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-blue-400 rounded-full animate-pulse ring-2 ring-white/20" />
               )}
               {collapsed && (
                 <span className="absolute left-full ml-3 px-2.5 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg">

@@ -33,19 +33,21 @@ export default function AdminLayout() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* Header */}
         <header
-          className="bg-white/90 backdrop-blur-md border-b border-gray-100 px-6 py-3 flex items-center justify-between flex-shrink-0 sticky top-0 z-30"
-          style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.04)' }}
+          className="bg-white/80 backdrop-blur-xl border-b border-gray-100/80 px-6 py-3 flex items-center justify-between flex-shrink-0 sticky top-0 z-30"
+          style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.03), 0 1px 0 rgba(0,0,0,0.02)' }}
         >
-          <div className="flex items-center gap-2 text-sm">
-            <div className="flex items-center gap-1.5 text-blue-600">
-              <Shield size={14} />
-              <span className="font-bold text-blue-700">Admin</span>
+          <div className="flex items-center gap-2.5 text-sm">
+            <div className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100/60 px-2.5 py-1 rounded-lg">
+              <div className="w-4 h-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded flex items-center justify-center">
+                <Shield size={9} className="text-white" />
+              </div>
+              <span className="text-xs font-bold text-blue-700">Admin</span>
             </div>
-            <ChevronRight size={14} className="text-gray-300" />
-            <span className="font-bold text-gray-900">{currentPage}</span>
+            <ChevronRight size={13} className="text-gray-300" />
+            <span className="font-bold text-gray-900 text-sm">{currentPage}</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {/* Live Clock */}
             <LiveClock variant="admin" />
 
@@ -56,13 +58,13 @@ export default function AdminLayout() {
             <NotificationBell variant="admin" />
 
             {/* Admin Avatar */}
-            <div className="flex items-center gap-2.5 pl-3 border-l border-gray-100">
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-600 to-blue-400 flex items-center justify-center text-white text-xs font-black">
+            <div className="flex items-center gap-2.5 pl-3 ml-1 border-l border-gray-200/60">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xs font-black shadow-sm shadow-blue-200 ring-2 ring-blue-100">
                 A
               </div>
               <div className="hidden sm:block">
                 <p className="text-sm font-bold text-gray-900 leading-tight">Platform Admin</p>
-                <p className="text-xs text-gray-400 leading-tight">admin@spazasure.co.za</p>
+                <p className="text-[11px] text-gray-400 leading-tight">admin@spazasure.co.za</p>
               </div>
             </div>
           </div>

@@ -5,14 +5,16 @@ import {
   AlertTriangle, Crown,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
+import { useOrderStore } from '../../store/orderStore';
 import { TierBadge } from '../ui';
 import { resolveUploadUrl } from '../../services/api';
 
-const navItems = [
+const baseNavItems = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/products',      icon: Package,          label: 'Products' },
-  { to: '/orders',        icon: ShoppingCart,     label: 'Orders',   badge: 2 },
+  { to: '/orders',        icon: ShoppingCart,     label: 'Orders' },
   { to: '/analytics',     icon: BarChart2,        label: 'Analytics' },
   { to: '/subscription',  icon: Crown,            label: 'Upgrade',  highlight: true },
   { to: '/profile',       icon: User,             label: 'Profile' },
@@ -25,10 +27,24 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user, logout } = useAuthStore();
+  const { pendingCount, fetchPendingCount } = useOrderStore();
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Fetch pending order count on mount and poll every 60 seconds
+  useEffect(() => {
+    fetchPendingCount();
+    const interval = setInterval(fetchPendingCount, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchPendingCount]);
+
   const handleLogout = () => { logout(); navigate('/login'); };
+
+  // Build nav items with dynamic badge
+  const navItems = baseNavItems.map((item) => ({
+    ...item,
+    badge: item.to === '/orders' && pendingCount > 0 ? pendingCount : undefined,
+  }));
 
   return (
     <aside
@@ -114,12 +130,12 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <Icon size={18} className="flex-shrink-0" />
               {!collapsed && <span className="flex-1">{label}</span>}
               {!collapsed && badge && (
-                <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                <span className="bg-accent text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center animate-pulse shadow-sm shadow-accent/50">
                   {badge}
                 </span>
               )}
               {collapsed && badge && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-accent rounded-full" />
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-accent rounded-full animate-pulse shadow-sm shadow-accent/50 ring-2 ring-white/20" />
               )}
               {/* Tooltip for collapsed */}
               {collapsed && (
@@ -132,22 +148,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         })}
       </nav>
 
-      {/* Compliance Alert */}
-      {!collapsed && (
-        <div className="px-3 pb-3">
-          <div className="bg-amber-500/20 border border-amber-400/30 rounded-xl p-3">
-            <div className="flex items-start gap-2">
-              <AlertTriangle size={14} className="text-amber-300 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-semibold text-amber-200">BEE Cert Pending</p>
-                <p className="text-[10px] text-amber-300/80 mt-0.5">Upload to stay compliant</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-
+      {/* Compliance Alert — removed: this is now dynamic based on actual document status */}
 
       {/* Logout */}
       <div className={clsx('border-t border-white/10 py-3', collapsed ? 'px-2' : 'px-3')}>

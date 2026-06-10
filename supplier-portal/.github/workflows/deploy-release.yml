@@ -1,19 +1,19 @@
-name: Supplier Portal - Deploy to QA
+name: Supplier Portal - Deploy to Release (Staging)
 
 on:
   push:
-    branches: [develop]
+    branches: [release]
     paths:
       - 'supplier-portal/**'
       - '!supplier-portal/**.md'
 
 concurrency:
-  group: supplier-portal-qa
+  group: supplier-portal-release
   cancel-in-progress: true
 
 jobs:
   build:
-    name: Build Frontend (QA)
+    name: Build Frontend (Release)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,35 +36,35 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      - name: Build for QA
-        run: npm run build:qa
+      - name: Build for Production (release validation)
+        run: npm run build:prod
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: supplier-portal-qa-build
+          name: supplier-portal-release-build
           path: supplier-portal/dist/
-          retention-days: 7
+          retention-days: 14
 
   deploy:
-    name: Deploy to QA Server
+    name: Deploy to Staging Server
     needs: build
     runs-on: ubuntu-latest
-    environment: qa
+    environment: release
 
     steps:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: supplier-portal-qa-build
+          name: supplier-portal-release-build
           path: dist/
 
-      - name: Deploy to QA Server
+      - name: Deploy to Release Server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.QA_HOST }}
-          username: ${{ secrets.QA_USERNAME }}
-          key: ${{ secrets.QA_SSH_KEY }}
+          host: ${{ secrets.RELEASE_HOST }}
+          username: ${{ secrets.RELEASE_USERNAME }}
+          key: ${{ secrets.RELEASE_SSH_KEY }}
           source: "dist/*"
           target: "/var/www/spazasure-supplier"
           strip_components: 1
@@ -74,10 +74,10 @@ jobs:
       - name: Verify deployment
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.QA_HOST }}
-          username: ${{ secrets.QA_USERNAME }}
-          key: ${{ secrets.QA_SSH_KEY }}
+          host: ${{ secrets.RELEASE_HOST }}
+          username: ${{ secrets.RELEASE_USERNAME }}
+          key: ${{ secrets.RELEASE_SSH_KEY }}
           script: |
             systemctl restart nginx
-            echo "Supplier Portal - QA deployment complete"
+            echo "Supplier Portal - Release/Staging deployment complete"
             echo "Timestamp: $(date)"

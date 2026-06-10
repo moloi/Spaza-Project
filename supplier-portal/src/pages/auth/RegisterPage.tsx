@@ -58,9 +58,10 @@ export default function RegisterPage() {
       const res = await authApi.register({
         role: 'supplier',
         email: data.email,
-        phoneNumber: data.phone,
+        phone: data.phone,
         password: data.password,
-        businessName: data.companyName,
+        companyName: data.companyName,
+        contactPerson: data.contactName,
         address: data.address,
       });
 

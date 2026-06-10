@@ -51,14 +51,28 @@ export default {
         'gradient-shimmer': 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
       },
       animation: {
-        'fade-in':        'fadeIn 0.3s ease-out',
-        'slide-up':       'slideUp 0.3s ease-out',
-        'slide-in':       'slideIn 0.25s ease-out',
+        'fade-in':        'fadeIn 0.4s cubic-bezier(0.16,1,0.3,1)',
+        'slide-up':       'slideUp 0.4s cubic-bezier(0.16,1,0.3,1)',
+        'slide-in':       'slideIn 0.3s cubic-bezier(0.16,1,0.3,1)',
         'pulse-soft':     'pulseSoft 3s ease-in-out infinite',
         'shimmer':        'shimmer 2s infinite',
         'bounce-sm':      'bounceSm 3s ease-in-out infinite',
-        'scale-in':       'scaleIn 0.2s ease-out',
+        'scale-in':       'scaleIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
         'count-up':       'fadeIn 0.6s ease-out',
+        // Staggered entry animations
+        'stagger-1':      'staggerIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.05s both',
+        'stagger-2':      'staggerIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.1s both',
+        'stagger-3':      'staggerIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.15s both',
+        'stagger-4':      'staggerIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.2s both',
+        'stagger-5':      'staggerIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.25s both',
+        'stagger-6':      'staggerIn 0.5s cubic-bezier(0.16,1,0.3,1) 0.3s both',
+        // Float animation
+        'float':          'float 6s ease-in-out infinite',
+        'float-slow':     'float 8s ease-in-out infinite',
+        // Subtle breathing
+        'breathe':        'breathe 4s ease-in-out infinite',
+        // Number counter
+        'number-pop':     'numberPop 0.6s cubic-bezier(0.34,1.56,0.64,1)',
         // Login-specific
         'orb-drift-1':    'orbDrift1 12s ease-in-out infinite',
         'orb-drift-2':    'orbDrift2 16s ease-in-out infinite',
@@ -78,12 +92,33 @@ export default {
       },
       keyframes: {
         fadeIn:        { from: { opacity: '0' },                                          to: { opacity: '1' } },
-        slideUp:       { from: { opacity: '0', transform: 'translateY(12px)' },           to: { opacity: '1', transform: 'translateY(0)' } },
+        slideUp:       { from: { opacity: '0', transform: 'translateY(16px)' },           to: { opacity: '1', transform: 'translateY(0)' } },
         slideIn:       { from: { opacity: '0', transform: 'translateX(-8px)' },           to: { opacity: '1', transform: 'translateX(0)' } },
         pulseSoft:     { '0%,100%': { opacity: '1' },                                     '50%': { opacity: '0.5' } },
         shimmer:       { '0%': { transform: 'translateX(-100%)' },                        '100%': { transform: 'translateX(100%)' } },
         bounceSm:      { '0%,100%': { transform: 'translateY(0)' },                       '50%': { transform: 'translateY(-6px)' } },
-        scaleIn:       { from: { opacity: '0', transform: 'scale(0.95)' },                to: { opacity: '1', transform: 'scale(1)' } },
+        scaleIn:       { from: { opacity: '0', transform: 'scale(0.92)' },                to: { opacity: '1', transform: 'scale(1)' } },
+        // Staggered entry — elements fly up with subtle scale
+        staggerIn: {
+          from: { opacity: '0', transform: 'translateY(20px) scale(0.96)' },
+          to:   { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        // Floating — gentle up/down drift
+        float: {
+          '0%,100%': { transform: 'translateY(0px)' },
+          '50%':     { transform: 'translateY(-8px)' },
+        },
+        // Subtle breathing scale
+        breathe: {
+          '0%,100%': { transform: 'scale(1)' },
+          '50%':     { transform: 'scale(1.02)' },
+        },
+        // Number pop — for KPI values
+        numberPop: {
+          '0%':   { opacity: '0', transform: 'scale(0.5) translateY(10px)' },
+          '60%':  { transform: 'scale(1.1) translateY(-2px)' },
+          '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+        },
         // Orbs drift around independently
         orbDrift1: {
           '0%,100%': { transform: 'translate(0px, 0px) scale(1)' },

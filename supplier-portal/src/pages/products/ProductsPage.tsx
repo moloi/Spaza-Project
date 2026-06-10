@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit2, Trash2, ToggleLeft, ToggleRight, QrCode, LayoutGrid, List, Package, Filter, RefreshCw } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, ToggleLeft, ToggleRight, QrCode, LayoutGrid, List, Package, Filter, RefreshCw, Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import type { Product } from '../../types';
 import { EmptyState } from '../../components/ui';
@@ -7,6 +7,7 @@ import PageLoader from '../../components/ui/PageLoader';
 import clsx from 'clsx';
 import ProductFormModal from './ProductFormModal';
 import BarcodeModal from './BarcodeModal';
+import BulkUploadModal from './BulkUploadModal';
 import { productsApi } from '../../services/api';
 
 const statusFilters = [
@@ -31,6 +32,7 @@ export default function ProductsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [barcodeProduct, setBarcodeProduct] = useState<Product | null>(null);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -112,6 +114,9 @@ export default function ProductsPage() {
         <div className="flex items-center gap-2">
           <button onClick={loadProducts} className="btn-secondary flex items-center gap-2" title="Refresh">
             <RefreshCw size={14} />
+          </button>
+          <button onClick={() => setShowBulkUpload(true)} className="btn-secondary flex items-center gap-2">
+            <Upload size={14} /> Bulk Upload
           </button>
           <button onClick={() => { setEditing(null); setShowModal(true); }} className="btn-primary flex items-center gap-2">
             <Plus size={16} /> Add Product
@@ -344,6 +349,13 @@ export default function ProductsPage() {
         <BarcodeModal
           product={barcodeProduct}
           onClose={() => setBarcodeProduct(null)}
+        />
+      )}
+
+      {showBulkUpload && (
+        <BulkUploadModal
+          onClose={() => setShowBulkUpload(false)}
+          onComplete={loadProducts}
         />
       )}
     </div>

@@ -354,11 +354,11 @@ export interface FaqItem {
 export const faqApi = {
   /** Get all active FAQs (supplier-facing) */
   list: () =>
-    api.get('/supplier/faqs').then((r) => r.data),
+    api.get('/supplier/faqs').then((r) => r.data).catch(() => ({ data: [] })),
 
   /** Get all FAQs including inactive (admin) */
   listAll: () =>
-    api.get('/admin/faqs').then((r) => r.data),
+    api.get('/admin/faqs').then((r) => r.data).catch(() => ({ data: [] })),
 
   /** Create a new FAQ */
   create: (data: { question: string; answer: string; sortOrder?: number }) =>
