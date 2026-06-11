@@ -24,11 +24,11 @@ function mapOrder(o: any): Order {
     id:             o.id,
     orderNumber:    o.orderNumber,
     shopId:         o.shop?.id ?? '',
-    shopName:       o.shop?.shopName ?? '',
+    shopName:       o.shop?.shopName ?? o.shopName ?? '',
     shopAddress:    o.shop?.address ?? '',
     items: (o.items ?? []).map((i: any) => ({
       productId:    i.productId,
-      productName:  i.name,
+      productName:  i.name ?? i.productName ?? '',
       productImage: '',
       quantity:     i.quantity,
       price:        i.unitPrice,
@@ -67,7 +67,7 @@ export default function OrdersPage() {
   if (loading) return <PageLoader variant="table" />;
 
   const filtered = orders.filter((o) => {
-    const matchSearch = o.orderNumber.toLowerCase().includes(search.toLowerCase()) || o.shopName.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = (o.orderNumber ?? '').toLowerCase().includes(search.toLowerCase()) || (o.shopName ?? '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || o.status === statusFilter;
     return matchSearch && matchStatus;
   });

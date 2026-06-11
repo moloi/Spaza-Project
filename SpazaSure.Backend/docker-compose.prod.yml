@@ -1,4 +1,4 @@
-# docker-compose.prod.yml
+﻿# docker-compose.prod.yml
 # Run: docker compose -f docker-compose.prod.yml up -d
 # Requires: .env.prod file at repo root (never commit this file)
 
@@ -22,6 +22,21 @@ services:
       timeout: 5s
       retries: 5
 
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: spazasure-prod-rabbitmq
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: spazasure
+      RABBITMQ_DEFAULT_PASS: ${PROD_RABBITMQ_PASSWORD}
+    volumes:
+      - prod_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
   auth-service:
     image: ${REGISTRY}/spazasure-auth:${IMAGE_TAG:-latest}
     container_name: spazasure-prod-auth
@@ -29,6 +44,9 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:               Production
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure;Username=spazasure_prod_user;Password=${PROD_DB_PASSWORD};SSL Mode=Require;Trust Server Certificate=true"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${PROD_RABBITMQ_PASSWORD}
       Jwt__Secret:                          ${PROD_JWT_SECRET}
       Jwt__AccessExpiryMinutes:             "30"
       Jwt__RefreshExpiryDays:               "14"
@@ -38,6 +56,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   product-service:
     image: ${REGISTRY}/spazasure-product:${IMAGE_TAG:-latest}
@@ -46,9 +66,14 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:               Production
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure;Username=spazasure_prod_user;Password=${PROD_DB_PASSWORD};SSL Mode=Require;Trust Server Certificate=true"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${PROD_RABBITMQ_PASSWORD}
       Jwt__Secret:                          ${PROD_JWT_SECRET}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   order-service:
@@ -58,9 +83,14 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:               Production
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure;Username=spazasure_prod_user;Password=${PROD_DB_PASSWORD};SSL Mode=Require;Trust Server Certificate=true"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${PROD_RABBITMQ_PASSWORD}
       Jwt__Secret:                          ${PROD_JWT_SECRET}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   user-service:
@@ -72,9 +102,31 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:               Production
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure;Username=spazasure_prod_user;Password=${PROD_DB_PASSWORD};SSL Mode=Require;Trust Server Certificate=true"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${PROD_RABBITMQ_PASSWORD}
       Jwt__Secret:                          ${PROD_JWT_SECRET}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  notification-service:
+    image: ${REGISTRY}/spazasure-notification:${IMAGE_TAG:-latest}
+    container_name: spazasure-prod-notification
+    restart: always
+    environment:
+      ASPNETCORE_ENVIRONMENT:               Production
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure;Username=spazasure_prod_user;Password=${PROD_DB_PASSWORD};SSL Mode=Require;Trust Server Certificate=true"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${PROD_RABBITMQ_PASSWORD}
+      Jwt__Secret:                          ${PROD_JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   gateway:
@@ -90,7 +142,9 @@ services:
       - product-service
       - order-service
       - user-service
+      - notification-service
 
 volumes:
   prod_postgres_data:
   prod_uploads:
+  prod_rabbitmq_data:

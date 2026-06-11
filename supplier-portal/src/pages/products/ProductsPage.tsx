@@ -1,14 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Edit2, Trash2, ToggleLeft, ToggleRight, QrCode, LayoutGrid, List, Package, Filter, RefreshCw, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Search, Edit2, Trash2, ToggleLeft, ToggleRight, QrCode, LayoutGrid, List, Package, Filter, RefreshCw, Upload, ShieldAlert, FileText, ArrowRight, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
-import type { Product } from '../../types';
+import type { Product, ComplianceDoc } from '../../types';
 import { EmptyState } from '../../components/ui';
 import PageLoader from '../../components/ui/PageLoader';
 import clsx from 'clsx';
 import ProductFormModal from './ProductFormModal';
 import BarcodeModal from './BarcodeModal';
 import BulkUploadModal from './BulkUploadModal';
-import { productsApi } from '../../services/api';
+import { productsApi, profileApi } from '../../services/api';
+
+const REQUIRED_DOCS = [
+  { docType: 'cipc_certificate', label: 'CIPC Certificate' },
+  { docType: 'tax_clearance', label: 'Tax Clearance' },
+  { docType: 'bee_certificate', label: 'BEE Certificate' },
+  { docType: 'product_license', label: 'Product License' },
+];
 
 const statusFilters = [
   { value: 'all',              label: 'All' },
@@ -25,6 +33,7 @@ const statusStyle: Record<string, string> = {
 };
 
 export default function ProductsPage() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -36,13 +45,47 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Compliance state
+  const [docs, setDocs] = useState<ComplianceDoc[]>([]);
+  const [complianceChecked, setComplianceChecked] = useState(false);
+  const [showComplianceAlert, setShowComplianceAlert] = useState(false);
+
+  // Check which required docs are missing or not approved
+  const missingDocs = REQUIRED_DOCS.filter(({ docType }) => {
+    const doc = docs.find((d) => d.docType === docType);
+    return !doc || doc.status === 'rejected';
+  });
+  const isCompliant = complianceChecked && missingDocs.length === 0;
+
   const loadProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await productsApi.list();
-      setProducts(res.data);
+      const [productsRes, profileRes] = await Promise.allSettled([
+        productsApi.list(),
+        profileApi.get(),
+      ]);
+
+      if (productsRes.status === 'fulfilled') {
+        setProducts(productsRes.value.data);
+      } else {
+        toast.error('Failed to load products');
+      }
+
+      if (profileRes.status === 'fulfilled') {
+        const profileData = (profileRes.value as any)?.data ?? profileRes.value;
+        const rawDocs: any[] = profileData?.documents ?? [];
+        setDocs(rawDocs.map((d: any) => ({
+          id: d.id,
+          docType: d.docType,
+          docUrl: d.docUrl ?? '',
+          status: d.status,
+          expiryDate: d.expiryDate,
+        })));
+      }
+
+      setComplianceChecked(true);
     } catch {
-      toast.error('Failed to load products');
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -50,10 +93,22 @@ export default function ProductsPage() {
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
+  // Show compliance popup on first load if not compliant
+  useEffect(() => {
+    if (complianceChecked && missingDocs.length > 0) {
+      setShowComplianceAlert(true);
+    }
+  }, [complianceChecked, missingDocs.length]);
+
   if (loading) return <PageLoader variant="cards" />;
 
+  // Block action if not compliant
+  const handleBlockedAction = () => {
+    setShowComplianceAlert(true);
+  };
+
   const filtered = products.filter((p) => {
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = (p.name ?? '').toLowerCase().includes(search.toLowerCase()) || (p.sku ?? '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'all' || p.status === statusFilter;
     return matchSearch && matchStatus;
   });
@@ -115,14 +170,41 @@ export default function ProductsPage() {
           <button onClick={loadProducts} className="btn-secondary flex items-center gap-2" title="Refresh">
             <RefreshCw size={14} />
           </button>
-          <button onClick={() => setShowBulkUpload(true)} className="btn-secondary flex items-center gap-2">
+          <button
+            onClick={isCompliant ? () => setShowBulkUpload(true) : handleBlockedAction}
+            className={clsx('btn-secondary flex items-center gap-2', !isCompliant && 'opacity-60 cursor-not-allowed')}
+          >
+            {!isCompliant && <Lock size={12} />}
             <Upload size={14} /> Bulk Upload
           </button>
-          <button onClick={() => { setEditing(null); setShowModal(true); }} className="btn-primary flex items-center gap-2">
+          <button
+            onClick={isCompliant ? () => { setEditing(null); setShowModal(true); } : handleBlockedAction}
+            className={clsx('btn-primary flex items-center gap-2', !isCompliant && 'opacity-70')}
+          >
+            {!isCompliant && <Lock size={12} />}
             <Plus size={16} /> Add Product
           </button>
         </div>
       </div>
+
+      {/* Compliance Warning Banner (always visible when not compliant) */}
+      {complianceChecked && !isCompliant && (
+        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-5 flex items-center gap-4 animate-in">
+          <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <ShieldAlert size={24} className="text-red-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-red-900 text-sm">Account Restricted — Missing Compliance Documents</p>
+            <p className="text-xs text-red-700 mt-1">You cannot add or edit products until all required documents are submitted and approved. Upload your documents to unlock full access.</p>
+          </div>
+          <button
+            onClick={() => navigate('/profile')}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-all flex-shrink-0"
+          >
+            Upload Documents <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
@@ -234,8 +316,8 @@ export default function ProductsPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-gray-100">
-                  <button onClick={() => { setEditing(p); setShowModal(true); }} className="flex-1 btn-secondary text-xs py-1.5 flex items-center justify-center gap-1">
-                    <Edit2 size={12} /> Edit
+                  <button onClick={() => { setEditing(p); setShowModal(true); }} className="flex-1 btn-secondary text-xs py-1.5 flex items-center justify-center gap-1" disabled={!isCompliant}>
+                    {isCompliant ? <Edit2 size={12} /> : <Lock size={12} />} Edit
                   </button>
                   <button onClick={() => setBarcodeProduct(p)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="View Barcode">
                     <QrCode size={16} />
@@ -318,13 +400,13 @@ export default function ProductsPage() {
                     </td>
                     <td className="table-cell">
                       <div className="flex items-center justify-center gap-1">
-                        <button onClick={() => { setEditing(p); setShowModal(true); }} className="btn-icon hover:text-primary hover:bg-primary-50" title="Edit">
-                          <Edit2 size={14} />
+                        <button onClick={isCompliant ? () => { setEditing(p); setShowModal(true); } : handleBlockedAction} className="btn-icon hover:text-primary hover:bg-primary-50" title={isCompliant ? "Edit" : "Documents required"}>
+                          {isCompliant ? <Edit2 size={14} /> : <Lock size={14} />}
                         </button>
                         <button onClick={() => setBarcodeProduct(p)} className="btn-icon hover:text-emerald-600 hover:bg-emerald-50" title="View Barcode">
                           <QrCode size={14} />
                         </button>
-                        <button onClick={() => handleDelete(p.id)} className="btn-icon hover:text-red-500 hover:bg-red-50" title="Delete">
+                        <button onClick={isCompliant ? () => handleDelete(p.id) : handleBlockedAction} className="btn-icon hover:text-red-500 hover:bg-red-50" title={isCompliant ? "Delete" : "Documents required"}>
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -337,7 +419,7 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {showModal && (
+      {showModal && isCompliant && (
         <ProductFormModal
           product={editing}
           onSave={handleSave}
@@ -352,11 +434,66 @@ export default function ProductsPage() {
         />
       )}
 
-      {showBulkUpload && (
+      {showBulkUpload && isCompliant && (
         <BulkUploadModal
           onClose={() => setShowBulkUpload(false)}
           onComplete={loadProducts}
         />
+      )}
+
+      {/* Compliance Alert Modal */}
+      {showComplianceAlert && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setShowComplianceAlert(false)} />
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
+            {/* Red gradient header */}
+            <div className="bg-gradient-to-br from-red-600 to-red-700 p-6 text-center">
+              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <ShieldAlert size={32} className="text-white" />
+              </div>
+              <h2 className="text-xl font-black text-white">Documents Required</h2>
+              <p className="text-red-100 text-sm mt-2">Your account is restricted until compliance documents are submitted.</p>
+            </div>
+
+            {/* Missing documents list */}
+            <div className="p-6">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Missing Documents:</p>
+              <div className="space-y-2.5">
+                {missingDocs.map(({ docType, label }) => {
+                  const doc = docs.find((d) => d.docType === docType);
+                  const isRejected = doc?.status === 'rejected';
+                  return (
+                    <div key={docType} className={clsx('flex items-center gap-3 p-3 rounded-xl border-2', isRejected ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200')}>
+                      <FileText size={18} className={isRejected ? 'text-red-500' : 'text-gray-400'} />
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-gray-900">{label}</p>
+                        <p className="text-xs text-gray-500">{isRejected ? 'Rejected — please re-upload' : 'Not uploaded'}</p>
+                      </div>
+                      <span className={clsx('text-[10px] font-bold px-2 py-0.5 rounded-full', isRejected ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-600')}>
+                        {isRejected ? 'Rejected' : 'Missing'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-6 space-y-3">
+                <button
+                  onClick={() => { setShowComplianceAlert(false); navigate('/profile'); }}
+                  className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary-700 text-white font-bold py-3 rounded-xl transition-all"
+                >
+                  <FileText size={16} /> Upload Documents Now
+                </button>
+                <button
+                  onClick={() => setShowComplianceAlert(false)}
+                  className="w-full text-sm font-semibold text-gray-500 hover:text-gray-700 py-2 transition-colors"
+                >
+                  I'll do this later (read-only mode)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

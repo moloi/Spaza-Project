@@ -12,4 +12,4 @@ export const truncate = (str: string, max = 40) =>
   str.length > max ? `${str.slice(0, max)}…` : str;
 
 export const generateSKU = (name: string) =>
-  name.toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').slice(0, 12);
+  (name ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '-').replace(/-+/g, '-').slice(0, 12);

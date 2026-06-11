@@ -1,4 +1,4 @@
-# docker-compose.qa.yml
+﻿# docker-compose.qa.yml
 # Run: docker compose -f docker-compose.qa.yml up -d
 # Requires: .env.qa file at repo root with secrets
 
@@ -22,6 +22,23 @@ services:
       timeout: 5s
       retries: 5
 
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: spazasure-qa-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: spazasure
+      RABBITMQ_DEFAULT_PASS: ${QA_RABBITMQ_PASSWORD:-SpazaRabbitQA2026}
+    ports:
+      - "15672:15672"
+    volumes:
+      - qa_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
   auth-service:
     build:
       context: .
@@ -31,6 +48,9 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:               QA
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${QA_RABBITMQ_PASSWORD:-SpazaRabbitQA2026}
       Jwt__Secret:                          ${QA_JWT_SECRET}
       Jwt__AccessExpiryMinutes:             "60"
       Jwt__RefreshExpiryDays:               "30"
@@ -39,6 +59,8 @@ services:
       AfricasTalking__Sandbox:              "true"
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   product-service:
@@ -50,9 +72,14 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:               QA
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${QA_RABBITMQ_PASSWORD:-SpazaRabbitQA2026}
       Jwt__Secret:                          ${QA_JWT_SECRET}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   order-service:
@@ -64,9 +91,14 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:               QA
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${QA_RABBITMQ_PASSWORD:-SpazaRabbitQA2026}
       Jwt__Secret:                          ${QA_JWT_SECRET}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   user-service:
@@ -80,9 +112,33 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT:               QA
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${QA_RABBITMQ_PASSWORD:-SpazaRabbitQA2026}
       Jwt__Secret:                          ${QA_JWT_SECRET}
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: src/Services/SpazaSure.NotificationService/Dockerfile
+    container_name: spazasure-qa-notification
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT:               QA
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${QA_RABBITMQ_PASSWORD:-SpazaRabbitQA2026}
+      Jwt__Secret:                          ${QA_JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   gateway:
@@ -100,7 +156,9 @@ services:
       - product-service
       - order-service
       - user-service
+      - notification-service
 
 volumes:
   qa_postgres_data:
   qa_uploads:
+  qa_rabbitmq_data:
