@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/push_notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
   AuthSession? _session;
@@ -14,6 +15,11 @@ class AuthProvider extends ChangeNotifier {
     _session = await AuthService.getSession();
     _initialized = true;
     notifyListeners();
+
+    // If already logged in, register for push notifications
+    if (_session != null) {
+      _registerPushToken();
+    }
   }
 
   // Step 1 — send OTP (login flow)
@@ -30,6 +36,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> verifyLogin(String phone, String otp) async {
     _session = await AuthService.verifyLogin(phone, otp);
     notifyListeners();
+    _registerPushToken();
   }
 
   // Step 2 — verify OTP + register
@@ -50,11 +57,24 @@ class AuthProvider extends ChangeNotifier {
       idNumber: idNumber,
     );
     notifyListeners();
+    _registerPushToken();
   }
 
   Future<void> logout() async {
+    // Unregister push token before clearing session
+    try {
+      await PushNotificationService.unregister();
+    } catch (_) {}
+
     await AuthService.logout();
     _session = null;
+    notifyListeners();
+  }
+
+  /// Handle session expiry — call this when a SessionExpiredException is caught.
+  void handleSessionExpired() {
+    _session = null;
+    AuthService.logout();
     notifyListeners();
   }
 
@@ -68,5 +88,16 @@ class AuthProvider extends ChangeNotifier {
       refreshToken: 'demo-refresh',
     );
     notifyListeners();
+  }
+
+  /// Register FCM token with the backend (non-blocking).
+  void _registerPushToken() {
+    Future.microtask(() async {
+      try {
+        await PushNotificationService.getAndRegisterToken();
+      } catch (_) {
+        // Non-critical — app works without push notifications
+      }
+    });
   }
 }

@@ -126,6 +126,42 @@ public class ShopAuthService(SpazaSureDbContext db, IConfiguration config, ILogg
         return (true, null, await IssueTokensAsync(user, user.Role, user.SpazaShop, ipAddress));
     }
 
+    // ── Refresh token ────────────────────────────────────────────────────────
+    public async Task<(bool Success, string? Error, ShopAuthResponse? Data)> RefreshAsync(
+        string rawToken, string ipAddress)
+    {
+        var hash = JwtHelper.HashToken(rawToken);
+        var stored = await db.RefreshTokens
+            .Include(r => r.User)
+                .ThenInclude(u => u.Role)
+                    .ThenInclude(r => r.RolePermissions)
+                        .ThenInclude(rp => rp.Permission)
+            .Include(r => r.User)
+                .ThenInclude(u => u.SpazaShop)
+            .FirstOrDefaultAsync(r => r.TokenHash == hash);
+
+        if (stored is null || !stored.IsActive)
+            return (false, "Invalid or expired refresh token.", null);
+
+        // Rotate: revoke old token
+        stored.RevokedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
+        return (true, null, await IssueTokensAsync(stored.User, stored.User.Role, stored.User.SpazaShop, ipAddress));
+    }
+
+    // ── Revoke (logout) ──────────────────────────────────────────────────────
+    public async Task RevokeAsync(string rawToken)
+    {
+        var hash = JwtHelper.HashToken(rawToken);
+        var stored = await db.RefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash);
+        if (stored is not null)
+        {
+            stored.RevokedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
     private async Task<string?> VerifyOtpAsync(string phone, string rawOtp, string purpose)
     {

@@ -46,4 +46,25 @@ public class ShopAuthController(ShopAuthService shopAuth) : ControllerBase
         if (!success) return Unauthorized(ApiResponse.Fail(error!));
         return Ok(ApiResponse<ShopAuthResponse>.Ok(data!));
     }
+
+    /// <summary>
+    /// Refresh access token using a valid refresh token.
+    /// </summary>
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh(RefreshRequest req)
+    {
+        var (success, error, data) = await shopAuth.RefreshAsync(req.RefreshToken, IpAddress);
+        if (!success) return Unauthorized(ApiResponse.Fail(error!));
+        return Ok(ApiResponse<ShopAuthResponse>.Ok(data!));
+    }
+
+    /// <summary>
+    /// Revoke refresh token (logout).
+    /// </summary>
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout(RefreshRequest req)
+    {
+        await shopAuth.RevokeAsync(req.RefreshToken);
+        return Ok(ApiResponse.Ok("Logged out."));
+    }
 }
