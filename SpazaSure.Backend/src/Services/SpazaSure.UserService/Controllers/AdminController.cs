@@ -92,10 +92,7 @@ public class AdminController(SpazaSureDbContext db) : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var query = db.SpazaShops
-            .Include(s => s.Documents)
-            .Include(s => s.User)
-            .AsQueryable();
+        var query = db.SpazaShops.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -124,7 +121,7 @@ public class AdminController(SpazaSureDbContext db) : ControllerBase
                 s.Id,
                 s.ShopName,
                 s.OwnerName,
-                Email = s.Email ?? (s.User != null ? s.User.Email : "") ?? "",
+                Email = s.Email != null ? s.Email : (s.User != null ? s.User.Email ?? "" : ""),
                 s.Phone,
                 Address = s.Address ?? "",
                 City = s.City ?? "",
