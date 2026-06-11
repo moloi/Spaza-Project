@@ -357,9 +357,9 @@ class _ComplianceScreenState extends State<ComplianceScreen> with SingleTickerPr
       final doc = docsByType[meta.type];
       widgets.add(
         _buildDocumentCard(meta, doc, provider)
-            .animate(delay: (250 + (i * 80)).ms, duration: 400.ms)
-            .fadeIn()
-            .slideX(begin: 0.03, end: 0),
+            .animate(delay: (250 + (i * 80)).ms)
+            .fadeIn(duration: 400.ms)
+            .slideX(begin: 0.03, end: 0, duration: 400.ms),
       );
       widgets.add(const SizedBox(height: 12));
     }
