@@ -1,45 +1,34 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, ShoppingCart, AlertTriangle, Package, X, CheckCheck, ArrowRight } from 'lucide-react';
+import { Bell, ShoppingCart, AlertTriangle, Package, X, CheckCheck, ArrowRight, Wifi, WifiOff } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import clsx from 'clsx';
+import { useNotificationStore } from '../../store/notificationStore';
+import type { NotificationType } from '../../types/notification';
 
-type NotifType = 'order' | 'compliance' | 'product' | 'system';
-
-interface Notification {
-  id: string;
-  type: NotifType;
-  title: string;
-  message: string;
-  createdAt: string;
-  read: boolean;
-  priority?: 'high' | 'normal';
-}
-
-const initialNotifications: Notification[] = [
-  { id: 'n1', type: 'order',      title: 'New Order Received',      message: "Mama's Spaza placed order ORD-2025-0004 for R1,450.00",                           createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),      read: false, priority: 'high' },
-  { id: 'n2', type: 'order',      title: 'Order Delivered',         message: 'ORD-2025-0003 confirmed delivered. Payment of R1,547.96 released.',               createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), read: false },
-  { id: 'n3', type: 'compliance', title: 'Document Expiring Soon',  message: 'Your Tax Clearance Certificate expires in 14 days.',                              createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), read: false, priority: 'high' },
-  { id: 'n4', type: 'product',    title: 'Product Approved',        message: 'Sunflower Oil 2L is now live on the marketplace.',                                 createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), read: true },
-  { id: 'n5', type: 'order',      title: 'Order Cancelled',         message: 'ORD-2025-0002 was cancelled by Zulu Corner Shop.',                                 createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(), read: true },
-];
-
-const typeConfig: Record<NotifType, { icon: React.ReactNode; iconBg: string; iconColor: string }> = {
+const typeConfig: Record<NotificationType, { icon: React.ReactNode; iconBg: string; iconColor: string }> = {
   order:      { icon: <ShoppingCart size={14} />,  iconBg: 'bg-blue-100',    iconColor: 'text-blue-600' },
   compliance: { icon: <AlertTriangle size={14} />, iconBg: 'bg-amber-100',   iconColor: 'text-amber-600' },
   product:    { icon: <Package size={14} />,       iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600' },
   system:     { icon: <Bell size={14} />,          iconBg: 'bg-gray-100',    iconColor: 'text-gray-500' },
+  supplier:   { icon: <Bell size={14} />,          iconBg: 'bg-purple-100',  iconColor: 'text-purple-600' },
 };
 
 export default function NotificationBell({ variant = 'supplier' }: { variant?: 'supplier' | 'admin' }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
   const [justOpened, setJustOpened] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const unread = notifications.filter((n) => !n.read);
-  const unreadCount = unread.length;
+  const {
+    notifications,
+    unreadCount,
+    isConnected,
+    markAsRead,
+    markAllAsRead,
+    archiveNotification,
+  } = useNotificationStore();
+
   const preview = notifications.slice(0, 5);
 
   // Close on outside click
@@ -57,17 +46,17 @@ export default function NotificationBell({ variant = 'supplier' }: { variant?: '
     setTimeout(() => setJustOpened(false), 600);
   }
 
-  function markRead(id: string) {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
+  function handleNotificationClick(id: string, actionUrl?: string) {
+    markAsRead(id);
+    if (actionUrl) {
+      setOpen(false);
+      navigate(actionUrl);
+    }
   }
 
-  function markAllRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }
-
-  function dismiss(id: string, e: React.MouseEvent) {
+  function handleDismiss(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    archiveNotification(id);
   }
 
   function goToAll() {
@@ -76,14 +65,19 @@ export default function NotificationBell({ variant = 'supplier' }: { variant?: '
   }
 
   const accentRing = variant === 'admin' ? 'hover:text-blue-600 hover:bg-blue-50' : 'hover:text-primary hover:bg-primary-50';
-  const badgeBg    = variant === 'admin' ? 'bg-blue-500' : 'bg-red-500';
+  const badgeBg = variant === 'admin' ? 'bg-blue-500' : 'bg-red-500';
 
   return (
     <div ref={ref} className="relative">
       {/* Bell button */}
       <button
         onClick={handleOpen}
-        className={clsx('relative p-2.5 text-gray-500 rounded-xl transition-all', accentRing, open && (variant === 'admin' ? 'text-blue-600 bg-blue-50' : 'text-primary bg-primary-50'))}
+        className={clsx(
+          'relative p-2.5 text-gray-500 rounded-xl transition-all',
+          accentRing,
+          open && (variant === 'admin' ? 'text-blue-600 bg-blue-50' : 'text-primary bg-primary-50')
+        )}
+        aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
       >
         <Bell
           size={17}
@@ -94,10 +88,13 @@ export default function NotificationBell({ variant = 'supplier' }: { variant?: '
         {/* Unread badge */}
         {unreadCount > 0 && (
           <span
-            className={clsx('absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] flex items-center justify-center text-[10px] font-black text-white rounded-full px-1 ring-2 ring-white', badgeBg)}
+            className={clsx(
+              'absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] flex items-center justify-center text-[10px] font-black text-white rounded-full px-1 ring-2 ring-white',
+              badgeBg
+            )}
             style={{ animation: 'badgePop 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}
           >
-            {unreadCount > 9 ? '9+' : unreadCount}
+            {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
       </button>
@@ -107,6 +104,8 @@ export default function NotificationBell({ variant = 'supplier' }: { variant?: '
         <div
           className="absolute right-0 top-full mt-2 w-96 bg-white rounded-2xl border border-gray-100 shadow-card-xl overflow-hidden z-50"
           style={{ animation: 'dropIn 0.2s cubic-bezier(0.16,1,0.3,1)' }}
+          role="menu"
+          aria-label="Notifications dropdown"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50/60">
@@ -119,14 +118,24 @@ export default function NotificationBell({ variant = 'supplier' }: { variant?: '
                 </span>
               )}
             </div>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllRead}
-                className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-primary transition-colors"
-              >
-                <CheckCheck size={13} /> Mark all read
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {/* Connection indicator */}
+              <span title={isConnected ? 'Real-time connected' : 'Reconnecting...'}>
+                {isConnected ? (
+                  <Wifi size={12} className="text-emerald-500" />
+                ) : (
+                  <WifiOff size={12} className="text-gray-300" />
+                )}
+              </span>
+              {unreadCount > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-primary transition-colors"
+                >
+                  <CheckCheck size={13} /> Mark all read
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Notification list */}
@@ -138,38 +147,40 @@ export default function NotificationBell({ variant = 'supplier' }: { variant?: '
               </div>
             ) : (
               preview.map((n, i) => {
-                const { icon, iconBg, iconColor } = typeConfig[n.type];
+                const config = typeConfig[n.type] ?? typeConfig.system;
                 return (
                   <div
                     key={n.id}
-                    onClick={() => markRead(n.id)}
+                    onClick={() => handleNotificationClick(n.id, n.actionUrl)}
                     className={clsx(
                       'flex items-start gap-3 px-4 py-3 cursor-pointer transition-all duration-150 border-b border-gray-50 last:border-0',
-                      !n.read ? 'bg-primary-50/40 hover:bg-primary-50/70' : 'hover:bg-gray-50',
+                      !n.isRead ? 'bg-primary-50/40 hover:bg-primary-50/70' : 'hover:bg-gray-50'
                     )}
                     style={{ animation: `slideItem 0.2s ${i * 0.04}s both cubic-bezier(0.16,1,0.3,1)` }}
+                    role="menuitem"
                   >
                     {/* Icon */}
-                    <div className={clsx('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5', iconBg, iconColor)}>
-                      {icon}
+                    <div className={clsx('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5', config.iconBg, config.iconColor)}>
+                      {config.icon}
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className={clsx('text-sm font-bold leading-tight', !n.read ? 'text-gray-900' : 'text-gray-600')}>
+                          <p className={clsx('text-sm font-bold leading-tight', !n.isRead ? 'text-gray-900' : 'text-gray-600')}>
                             {n.title}
                           </p>
-                          {n.priority === 'high' && !n.read && (
+                          {(n.priority === 'high' || n.priority === 'urgent') && !n.isRead && (
                             <span className="text-[9px] font-black bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
-                              Urgent
+                              {n.priority === 'urgent' ? 'Urgent' : 'High'}
                             </span>
                           )}
                         </div>
                         <button
-                          onClick={(e) => dismiss(n.id, e)}
+                          onClick={(e) => handleDismiss(n.id, e)}
                           className="text-gray-300 hover:text-gray-500 transition-colors flex-shrink-0 mt-0.5"
+                          aria-label="Dismiss notification"
                         >
                           <X size={13} />
                         </button>
@@ -181,7 +192,7 @@ export default function NotificationBell({ variant = 'supplier' }: { variant?: '
                     </div>
 
                     {/* Unread dot */}
-                    {!n.read && (
+                    {!n.isRead && (
                       <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2 animate-pulse-soft" />
                     )}
                   </div>
@@ -190,7 +201,7 @@ export default function NotificationBell({ variant = 'supplier' }: { variant?: '
             )}
           </div>
 
-          {/* Footer — View all button */}
+          {/* Footer */}
           <div className="border-t border-gray-100 p-3">
             <button
               onClick={goToAll}

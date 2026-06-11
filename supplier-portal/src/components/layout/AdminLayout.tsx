@@ -6,6 +6,7 @@ import PageTransition from '../ui/PageTransition';
 import GlobalSearch from '../ui/GlobalSearch';
 import LiveClock from '../ui/LiveClock';
 import NotificationBell from '../ui/NotificationBell';
+import { useNotifications } from '../../hooks/useNotifications';
 
 const breadcrumbMap: Record<string, string> = {
   dashboard:     'Dashboard',
@@ -22,6 +23,9 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Initialize SignalR notifications
+  useNotifications();
 
   const segments = location.pathname.split('/').filter(Boolean);
   const currentPage = breadcrumbMap[segments[1]] ?? 'Dashboard';
