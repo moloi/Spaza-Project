@@ -3,112 +3,172 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:spazasure_app/core/constants/app_colors.dart';
 import 'package:spazasure_app/core/constants/app_text_styles.dart';
+import 'package:spazasure_app/services/wallet_service.dart';
 
-class WalletScreen extends StatelessWidget {
+class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
 
-  static const _transactions = [
-    _Tx('Order SPZ-2025-0002', 'Payment', -717.95, '3 days ago', Icons.shopping_bag_outlined, AppColors.error),
-    _Tx('Wallet Top-Up', 'EFT Deposit', 2000.00, '5 days ago', Icons.add_circle_outline, AppColors.success),
-    _Tx('Order SPZ-2025-0001', 'Payment', -2535.15, '6 days ago', Icons.shopping_bag_outlined, AppColors.error),
-    _Tx('Wallet Top-Up', 'EFT Deposit', 5000.00, '8 days ago', Icons.add_circle_outline, AppColors.success),
-    _Tx('Refund - SPZ-2024-0098', 'Refund', 350.00, '12 days ago', Icons.replay_outlined, AppColors.info),
-  ];
+  @override
+  State<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends State<WalletScreen> {
+  WalletBalance? _balance;
+  List<WalletTransaction> _transactions = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final results = await Future.wait([
+        WalletService.getBalance(),
+        WalletService.getTransactions(),
+      ]);
+      if (mounted) {
+        setState(() {
+          _balance = results[0] as WalletBalance;
+          _transactions = results[1] as List<WalletTransaction>;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final balanceDisplay = _balance != null
+        ? 'R ${_balance!.balance.toStringAsFixed(2)}'
+        : 'R 0.00';
+    final totalSpent = _balance?.totalSpent ?? 0;
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 220,
-            pinned: true,
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            title: Text('SpazaSure Wallet', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF0D3B0F), Color(0xFF1B5E20), Color(0xFF2E7D32)],
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    Positioned(right: -30, top: -30, child: Container(width: 160, height: 160, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.05)))),
-                    Positioned(left: -20, bottom: -20, child: Container(width: 120, height: 120, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.04)))),
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.end,
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: CustomScrollView(
+                slivers: [
+                  SliverAppBar(
+                    expandedHeight: 220,
+                    pinned: true,
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    title: Text('SpazaSure Wallet', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+                    flexibleSpace: FlexibleSpaceBar(
+                      background: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF0D3B0F), Color(0xFF1B5E20), Color(0xFF2E7D32)],
+                          ),
+                        ),
+                        child: Stack(
                           children: [
-                            Text('Available Balance', style: GoogleFonts.poppins(color: Colors.white.withValues(alpha: 0.7), fontSize: 13)),
-                            const SizedBox(height: 4),
-                            Text('R 4,097.10', style: GoogleFonts.poppins(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: 1)),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.verified_rounded, color: Colors.white, size: 14),
-                                  const SizedBox(width: 4),
-                                  Text('Active', style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
-                                ],
+                            Positioned(right: -30, top: -30, child: Container(width: 160, height: 160, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.05)))),
+                            Positioned(left: -20, bottom: -20, child: Container(width: 120, height: 120, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: 0.04)))),
+                            SafeArea(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Text('Available Balance', style: GoogleFonts.poppins(color: Colors.white.withValues(alpha: 0.7), fontSize: 13)),
+                                    const SizedBox(height: 4),
+                                    Text(balanceDisplay, style: GoogleFonts.poppins(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: 1)),
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.verified_rounded, color: Colors.white, size: 14),
+                                          const SizedBox(width: 4),
+                                          Text('Active', style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500)),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: _ActionButton(icon: Icons.add_rounded, label: 'Top Up', color: AppColors.primary, onTap: () => _showTopUp(context))),
-                      const SizedBox(width: 12),
-                      Expanded(child: _ActionButton(icon: Icons.send_rounded, label: 'Pay Order', color: AppColors.secondary, onTap: () {})),
-                      const SizedBox(width: 12),
-                      Expanded(child: _ActionButton(icon: Icons.history_rounded, label: 'History', color: AppColors.accent, onTap: () {})),
-                    ],
-                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2, end: 0, delay: 200.ms),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(child: _StatCard('R7,000', 'Total Topped Up', AppColors.success, Icons.arrow_downward_rounded)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _StatCard('R3,253', 'Total Spent', AppColors.error, Icons.arrow_upward_rounded)),
-                    ],
-                  ).animate().fadeIn(delay: 300.ms),
-                  const SizedBox(height: 24),
-                  Text('Recent Transactions', style: AppTextStyles.h3),
-                  const SizedBox(height: 12),
-                  ..._transactions.asMap().entries.map((e) =>
-                    _TxTile(tx: e.value).animate(delay: (80 * e.key).ms).fadeIn().slideX(begin: 0.05, end: 0),
                   ),
-                  const SizedBox(height: 24),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: _ActionButton(icon: Icons.add_rounded, label: 'Top Up', color: AppColors.primary, onTap: () => _showTopUp(context))),
+                              const SizedBox(width: 12),
+                              Expanded(child: _ActionButton(icon: Icons.send_rounded, label: 'Pay Order', color: AppColors.secondary, onTap: () {})),
+                              const SizedBox(width: 12),
+                              Expanded(child: _ActionButton(icon: Icons.history_rounded, label: 'History', color: AppColors.accent, onTap: () {})),
+                            ],
+                          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2, end: 0, delay: 200.ms),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(child: _StatCard('R${_balance?.balance.toStringAsFixed(0) ?? '0'}', 'Balance', AppColors.success, Icons.account_balance_wallet_rounded)),
+                              const SizedBox(width: 12),
+                              Expanded(child: _StatCard('R${totalSpent.toStringAsFixed(0)}', 'Total Spent', AppColors.error, Icons.arrow_upward_rounded)),
+                            ],
+                          ).animate().fadeIn(delay: 300.ms),
+                          const SizedBox(height: 24),
+                          Text('Recent Transactions', style: AppTextStyles.h3),
+                          const SizedBox(height: 12),
+                          if (_transactions.isEmpty)
+                            Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Text('No transactions yet', style: AppTextStyles.bodySmall),
+                              ),
+                            )
+                          else
+                            ..._transactions.asMap().entries.map((e) {
+                              final tx = e.value;
+                              final isPositive = tx.amount > 0;
+                              return _TxTile(tx: _Tx(
+                                tx.description,
+                                tx.type,
+                                tx.amount,
+                                _timeAgo(tx.date),
+                                isPositive ? Icons.add_circle_outline : Icons.shopping_bag_outlined,
+                                isPositive ? AppColors.success : AppColors.error,
+                              )).animate(delay: (80 * e.key).ms).fadeIn().slideX(begin: 0.05, end: 0);
+                            }),
+                          const SizedBox(height: 24),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
     );
+  }
+
+  String _timeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 
   void _showTopUp(BuildContext context) {
@@ -167,14 +227,31 @@ class WalletScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity, height: 52,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    final amount = double.tryParse(controller.text) ?? 0;
+                    if (amount <= 0) return;
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Top-up of R${controller.text} initiated'),
-                      backgroundColor: AppColors.success,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ));
+                    try {
+                      final result = await WalletService.topUp(amount: amount);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Top-up of R${amount.toStringAsFixed(2)} initiated. Ref: ${result.payment['reference'] ?? ''}'),
+                          backgroundColor: AppColors.success,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ));
+                        _loadData();
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text('Error: $e'),
+                          backgroundColor: AppColors.error,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ));
+                      }
+                    }
                   },
                   child: const Text('Proceed to EFT'),
                 ),
