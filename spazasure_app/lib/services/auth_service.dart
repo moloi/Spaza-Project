@@ -24,47 +24,25 @@ class AuthService {
   static const _shopNameKey = 'shop_name';
   static const _phoneKey = 'phone';
 
-  // ── DEV TEST OTP ───────────────────────────────────────────────────────
-  // When backend is unavailable, use OTP "123456" to log in with a demo account.
-  static const _devOtp = '123456';
-
   // ── Step 1: Request OTP ───────────────────────────────────────────────────
   static Future<void> sendOtp(String phone, {String purpose = 'login'}) async {
     final formatted = _formatPhone(phone);
-    try {
-      await ApiService.post(
-        '/shop/auth/send-otp?purpose=$purpose',
-        {'phone': formatted},
-        auth: false,
-      );
-    } catch (_) {
-      // Backend unavailable — allow dev OTP "123456"
-    }
+    await ApiService.post(
+      '/shop/auth/send-otp?purpose=$purpose',
+      {'phone': formatted},
+      auth: false,
+    );
   }
 
   // ── Step 2a: Verify OTP + Login ───────────────────────────────────────────
   static Future<AuthSession> verifyLogin(String phone, String otp) async {
     final formatted = _formatPhone(phone);
-    try {
-      final res = await ApiService.post(
-        '/shop/auth/login',
-        {'phone': formatted, 'otp': otp},
-        auth: false,
-      );
-      return _parseAndSave(res['data'] as Map<String, dynamic>);
-    } catch (_) {
-      // Fallback: accept dev OTP when backend is down
-      if (otp == _devOtp) {
-        return _parseAndSave({
-          'userId': 'demo-001',
-          'shopName': "Thabo's Spaza Shop",
-          'phone': formatted,
-          'accessToken': 'dev-token-${DateTime.now().millisecondsSinceEpoch}',
-          'refreshToken': 'dev-refresh-token',
-        });
-      }
-      rethrow;
-    }
+    final res = await ApiService.post(
+      '/shop/auth/login',
+      {'phone': formatted, 'otp': otp},
+      auth: false,
+    );
+    return _parseAndSave(res['data'] as Map<String, dynamic>);
   }
 
   // ── Step 2b: Verify OTP + Register ───────────────────────────────────────
@@ -77,33 +55,19 @@ class AuthService {
     String? idNumber,
   }) async {
     final formatted = _formatPhone(phone);
-    try {
-      final res = await ApiService.post(
-        '/shop/auth/register',
-        {
-          'phone': formatted,
-          'otp': otp,
-          'fullName': fullName,
-          'shopName': shopName,
-          'address': address,
-          if (idNumber != null && idNumber.isNotEmpty) 'idNumber': idNumber,
-        },
-        auth: false,
-      );
-      return _parseAndSave(res['data'] as Map<String, dynamic>);
-    } catch (_) {
-      // Fallback: accept dev OTP when backend is down
-      if (otp == _devOtp) {
-        return _parseAndSave({
-          'userId': 'demo-001',
-          'shopName': shopName,
-          'phone': formatted,
-          'accessToken': 'dev-token-${DateTime.now().millisecondsSinceEpoch}',
-          'refreshToken': 'dev-refresh-token',
-        });
-      }
-      rethrow;
-    }
+    final res = await ApiService.post(
+      '/shop/auth/register',
+      {
+        'phone': formatted,
+        'otp': otp,
+        'fullName': fullName,
+        'shopName': shopName,
+        'address': address,
+        if (idNumber != null && idNumber.isNotEmpty) 'idNumber': idNumber,
+      },
+      auth: false,
+    );
+    return _parseAndSave(res['data'] as Map<String, dynamic>);
   }
 
   // ── Session helpers ───────────────────────────────────────────────────────

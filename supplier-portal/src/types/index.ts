@@ -192,3 +192,6 @@ export interface SubscribeRequest {
   paymentReference?: string;
   confirmPayment?: boolean;
 }
+
+// Notifications
+export type { Notification, AdminNotification, NotificationType, NotificationPriority, NotificationChannel, NotificationPreferences, NotificationListParams, NotificationListResponse, SendNotificationRequest } from './notification';
