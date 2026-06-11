@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'core/config/app_config.dart';
 import 'core/theme/app_theme.dart';
+import 'core/services/connectivity_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
 import 'features/onboarding/screens/splash_screen.dart';
@@ -23,9 +27,22 @@ import 'features/group_buy/screens/group_buy_screen.dart';
 import 'features/marketplace/screens/qr_scanner_screen.dart';
 import 'features/orders/screens/rate_delivery_screen.dart';
 import 'core/widgets/logo_page_route.dart';
+import 'services/push_notification_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment configuration
+  await AppConfig.load();
+
+  // Initialize Firebase (required for push notifications)
+  try {
+    await Firebase.initializeApp();
+    await PushNotificationService.initialize();
+  } catch (_) {
+    // Firebase not configured yet — app still works without push notifications
+  }
+
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -36,6 +53,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()..init()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => ConnectivityService()),
       ],
       child: const SpazaSureApp(),
     ),
@@ -51,6 +69,18 @@ class SpazaSureApp extends StatelessWidget {
       title: 'SpazaSure',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      // Localization support
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('en'),
+        Locale('zu'),
+        Locale('xh'),
+        Locale('af'),
+      ],
       initialRoute: '/splash',
       onGenerateRoute: (settings) {
         final pages = <String, Widget Function()>{
