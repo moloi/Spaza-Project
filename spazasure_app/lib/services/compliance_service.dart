@@ -1,10 +1,15 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../core/config/app_config.dart';
 import 'api_service.dart';
 
 class ComplianceDocument {
   final String id;
   final String docType;
   final String? docUrl;
-  final String status;
+  final String status; // missing, pending, approved, rejected
   final String? expiryDate;
   final String? rejectionNote;
   final String? guidanceUrl;
@@ -21,7 +26,7 @@ class ComplianceDocument {
 
   factory ComplianceDocument.fromJson(Map<String, dynamic> json) {
     return ComplianceDocument(
-      id: json['id'].toString(),
+      id: json['id']?.toString() ?? '',
       docType: json['docType'] ?? '',
       docUrl: json['docUrl'],
       status: json['status'] ?? 'missing',
@@ -48,6 +53,20 @@ class ComplianceStatus {
     required this.pending,
     required this.missing,
   });
+
+  factory ComplianceStatus.fromJson(Map<String, dynamic> data) {
+    final docs = (data['documents'] as List<dynamic>? ?? [])
+        .map((d) => ComplianceDocument.fromJson(d as Map<String, dynamic>))
+        .toList();
+    return ComplianceStatus(
+      overallStatus: data['overallStatus'] ?? 'red',
+      documents: docs,
+      totalRequired: data['totalRequired'] ?? 0,
+      approved: data['approved'] ?? 0,
+      pending: data['pending'] ?? 0,
+      missing: data['missing'] ?? 0,
+    );
+  }
 }
 
 class ComplianceService {
@@ -65,32 +84,47 @@ class ComplianceService {
   static Future<ComplianceStatus> getStatus() async {
     final res = await ApiService.get('/shop/compliance/status');
     final data = res['data'] as Map<String, dynamic>;
-    final docs = (data['documents'] as List<dynamic>? ?? [])
-        .map((d) => ComplianceDocument.fromJson(d as Map<String, dynamic>))
-        .toList();
-    return ComplianceStatus(
-      overallStatus: data['overallStatus'] ?? 'red',
-      documents: docs,
-      totalRequired: data['totalRequired'] ?? 0,
-      approved: data['approved'] ?? 0,
-      pending: data['pending'] ?? 0,
-      missing: data['missing'] ?? 0,
-    );
+    return ComplianceStatus.fromJson(data);
   }
 
-  /// Upload a compliance document.
-  /// Note: For file uploads, use multipart — this method prepares the request
-  /// but actual file upload requires http.MultipartRequest.
-  static Future<void> uploadDocument({
+  /// Upload a compliance document using multipart form data.
+  static Future<ComplianceDocument> uploadDocument({
     required String docType,
     required String filePath,
   }) async {
-    // For file uploads, we need to use multipart form data.
-    // This is a placeholder — the actual implementation should use
-    // http.MultipartRequest pointed at the gateway URL.
-    await ApiService.post('/shop/compliance/documents', {
-      'docType': docType,
-      'filePath': filePath,
-    });
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('access_token');
+
+    final uri = Uri.parse('${AppConfig.apiBaseUrl}/shop/compliance/documents');
+    final request = http.MultipartRequest('POST', uri);
+
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    request.fields['docType'] = docType;
+    request.files.add(await http.MultipartFile.fromPath('file', filePath));
+
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 30));
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final data = body['data'] as Map<String, dynamic>;
+      return ComplianceDocument(
+        id: data['id']?.toString() ?? '',
+        docType: data['docType'] ?? docType,
+        docUrl: data['docUrl'],
+        status: data['status'] ?? 'pending',
+      );
+    } else if (response.statusCode == 401) {
+      throw SessionExpiredException('Session expired. Please log in again.');
+    } else {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw ApiException(
+        body['message']?.toString() ?? 'Upload failed',
+        response.statusCode,
+      );
+    }
   }
 }

@@ -8,6 +8,7 @@ import 'core/theme/app_theme.dart';
 import 'core/services/connectivity_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/compliance_provider.dart';
 import 'features/onboarding/screens/splash_screen.dart';
 import 'features/onboarding/screens/onboarding_screen.dart';
 import 'features/auth/screens/login_screen.dart';
@@ -54,6 +55,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()..init()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => ConnectivityService()),
+        ChangeNotifierProvider(create: (_) => ComplianceProvider()),
       ],
       child: const SpazaSureApp(),
     ),
