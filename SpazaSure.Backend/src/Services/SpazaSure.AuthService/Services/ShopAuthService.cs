@@ -13,7 +13,7 @@ public class ShopAuthService(SpazaSureDbContext db, IConfiguration config, ILogg
     private readonly int _refreshExpiry = int.Parse(config["Jwt:RefreshExpiryDays"] ?? "30");
 
     // ── Step 1: Send OTP ──────────────────────────────────────────────────────
-    public async Task<(bool Success, string? Error)> SendOtpAsync(string phone, string purpose)
+    public async Task<(bool Success, string? Error, string? DevOtp)> SendOtpAsync(string phone, string purpose)
     {
         // Invalidate any existing unused OTPs for this phone + purpose
         var existing = await db.OtpCodes
@@ -46,7 +46,12 @@ public class ShopAuthService(SpazaSureDbContext db, IConfiguration config, ILogg
         if (!sent)
             logger.LogWarning("SMS delivery failed for {Phone} — OTP still stored", phone);
 
-        return (true, null);
+        // Return raw OTP for non-production environments (auto-fill in app)
+        var isSandbox = config.GetValue<bool>("AfricasTalking:Sandbox", false);
+        var env = config["ASPNETCORE_ENVIRONMENT"] ?? "Production";
+        var returnOtp = isSandbox || env != "Production" ? rawOtp : null;
+
+        return (true, null, returnOtp);
     }
 
     // ── Step 2a: Register new spaza shop ─────────────────────────────────────

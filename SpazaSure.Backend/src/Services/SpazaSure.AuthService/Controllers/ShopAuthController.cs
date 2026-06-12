@@ -20,8 +20,13 @@ public class ShopAuthController(ShopAuthService shopAuth) : ControllerBase
         if (purpose != "login" && purpose != "registration")
             return BadRequest(ApiResponse.Fail("Purpose must be 'login' or 'registration'."));
 
-        var (success, error) = await shopAuth.SendOtpAsync(req.Phone, purpose);
+        var (success, error, devOtp) = await shopAuth.SendOtpAsync(req.Phone, purpose);
         if (!success) return BadRequest(ApiResponse.Fail(error!));
+
+        // In non-production, include OTP in response for auto-fill
+        if (devOtp != null)
+            return Ok(ApiResponse<object>.Ok(new { otp = devOtp }, "OTP sent successfully."));
+
         return Ok(ApiResponse.Ok("OTP sent successfully."));
     }
 
