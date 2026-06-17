@@ -80,6 +80,90 @@ public class ShopProfileController(SpazaSureDbContext db) : ControllerBase
         await db.SaveChangesAsync();
         return Ok(ApiResponse.Ok("Profile updated successfully."));
     }
+
+    /// <summary>
+    /// Upload a compliance document (PDF, DOC, JPG, PNG)
+    /// </summary>
+    [HttpPost("documents")]
+    [RequestSizeLimit(10_000_000)] // 10MB
+    public async Task<IActionResult> UploadDocument([FromForm] string docType, IFormFile file)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(ApiResponse.Fail("No file provided."));
+
+        var allowed = new[] { ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp" };
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowed.Contains(ext))
+            return BadRequest(ApiResponse.Fail("File type not allowed. Accepted: PDF, DOC, DOCX, JPG, PNG, WEBP."));
+
+        if (file.Length > 10 * 1024 * 1024)
+            return BadRequest(ApiResponse.Fail("File must be under 10MB."));
+
+        var shop = await db.SpazaShops.FirstOrDefaultAsync(s => s.UserId == UserId);
+        if (shop is null) return NotFound(ApiResponse.Fail("Shop profile not found."));
+
+        // Save file to uploads directory
+        var uploadsDir = Path.Combine("uploads", "shop-docs", shop.Id.ToString());
+        Directory.CreateDirectory(uploadsDir);
+        var fileName = $"{docType}_{DateTime.UtcNow:yyyyMMddHHmmss}{ext}";
+        var filePath = Path.Combine(uploadsDir, fileName);
+
+        await using var stream = System.IO.File.Create(filePath);
+        await file.CopyToAsync(stream);
+
+        var docUrl = $"/uploads/shop-docs/{shop.Id}/{fileName}";
+
+        // Update or create document record
+        var existing = await db.ShopDocuments
+            .FirstOrDefaultAsync(d => d.ShopId == shop.Id && d.DocType == docType);
+
+        if (existing is not null)
+        {
+            existing.DocUrl = docUrl;
+            existing.Status = "pending";
+            existing.RejectionNote = null;
+        }
+        else
+        {
+            db.ShopDocuments.Add(new SpazaSure.Infrastructure.Entities.ShopDocument
+            {
+                ShopId = shop.Id,
+                DocType = docType,
+                DocUrl = docUrl,
+                Status = "pending"
+            });
+        }
+
+        await db.SaveChangesAsync();
+        return Ok(ApiResponse<object>.Ok(new { docType, docUrl, status = "pending" }));
+    }
+
+    /// <summary>
+    /// Get all documents for the logged-in shop owner
+    /// </summary>
+    [HttpGet("documents")]
+    public async Task<IActionResult> GetDocuments()
+    {
+        var shop = await db.SpazaShops.FirstOrDefaultAsync(s => s.UserId == UserId);
+        if (shop is null) return NotFound(ApiResponse.Fail("Shop profile not found."));
+
+        var docs = await db.ShopDocuments
+            .Where(d => d.ShopId == shop.Id)
+            .OrderByDescending(d => d.CreatedAt)
+            .Select(d => new
+            {
+                d.Id,
+                d.DocType,
+                d.DocUrl,
+                d.Status,
+                d.ExpiryDate,
+                d.RejectionNote,
+                d.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(ApiResponse<object>.Ok(docs));
+    }
 }
 
 public record UpdateShopProfileRequest(
