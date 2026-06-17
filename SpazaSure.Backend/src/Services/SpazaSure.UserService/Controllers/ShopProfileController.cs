@@ -62,7 +62,7 @@ public class ShopProfileController(SpazaSureDbContext db) : ControllerBase
     /// <summary>
     /// Update shop profile details
     /// </summary>
-    [HttpPut]
+    [HttpPatch]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateShopProfileRequest req)
     {
         var shop = await db.SpazaShops.FirstOrDefaultAsync(s => s.UserId == UserId);
