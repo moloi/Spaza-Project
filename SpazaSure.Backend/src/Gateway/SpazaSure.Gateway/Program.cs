@@ -34,10 +34,7 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.DocumentTitle = "SpazaSure API Dashboard";
-    c.SwaggerEndpoint("/svc/auth/swagger/v1/swagger.json", "Auth Service");
-    c.SwaggerEndpoint("/svc/product/swagger/v1/swagger.json", "Product Service");
-    c.SwaggerEndpoint("/svc/order/swagger/v1/swagger.json", "Order Service");
-    c.SwaggerEndpoint("/svc/user/swagger/v1/swagger.json", "User Service");
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Gateway");
     c.RoutePrefix = "swagger";
     c.DefaultModelsExpandDepth(-1);
     c.DisplayRequestDuration();
