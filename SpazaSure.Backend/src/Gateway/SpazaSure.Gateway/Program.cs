@@ -34,14 +34,12 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.DocumentTitle = "SpazaSure API Dashboard";
-    c.SwaggerEndpoint("http://localhost:5001/swagger/v1/swagger.json", "Auth Service (5001)");
-    c.SwaggerEndpoint("http://localhost:5002/swagger/v1/swagger.json", "Product Service (5002)");
-    c.SwaggerEndpoint("http://localhost:5003/swagger/v1/swagger.json", "Order Service (5003)");
-    c.SwaggerEndpoint("http://localhost:5004/swagger/v1/swagger.json", "Analytics Service (5004)");
-    c.SwaggerEndpoint("http://localhost:5005/swagger/v1/swagger.json", "User Service (5005)");
-    c.SwaggerEndpoint("http://localhost:5006/swagger/v1/swagger.json", "Compliance Service (5006)");
+    c.SwaggerEndpoint("/svc/auth/swagger/v1/swagger.json", "Auth Service");
+    c.SwaggerEndpoint("/svc/product/swagger/v1/swagger.json", "Product Service");
+    c.SwaggerEndpoint("/svc/order/swagger/v1/swagger.json", "Order Service");
+    c.SwaggerEndpoint("/svc/user/swagger/v1/swagger.json", "User Service");
     c.RoutePrefix = "swagger";
-    c.DefaultModelsExpandDepth(-1); // collapse schemas by default for cleaner view
+    c.DefaultModelsExpandDepth(-1);
     c.DisplayRequestDuration();
 });
 
