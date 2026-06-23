@@ -47,6 +47,7 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT:               QA
+      ASPNETCORE_URLS:                      http://0.0.0.0:5001
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
       RabbitMQ__Host:                       rabbitmq
       RabbitMQ__Username:                   spazasure
@@ -71,6 +72,7 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT:               QA
+      ASPNETCORE_URLS:                      http://0.0.0.0:5002
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
       RabbitMQ__Host:                       rabbitmq
       RabbitMQ__Username:                   spazasure
@@ -90,6 +92,7 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT:               QA
+      ASPNETCORE_URLS:                      http://0.0.0.0:5003
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
       RabbitMQ__Host:                       rabbitmq
       RabbitMQ__Username:                   spazasure
@@ -111,6 +114,7 @@ services:
       - qa_uploads:/app/uploads
     environment:
       ASPNETCORE_ENVIRONMENT:               QA
+      ASPNETCORE_URLS:                      http://0.0.0.0:5005
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
       RabbitMQ__Host:                       rabbitmq
       RabbitMQ__Username:                   spazasure
@@ -130,6 +134,7 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT:               QA
+      ASPNETCORE_URLS:                      http://0.0.0.0:5184
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
       RabbitMQ__Host:                       rabbitmq
       RabbitMQ__Username:                   spazasure
@@ -149,6 +154,7 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT:               QA
+      ASPNETCORE_URLS:                      http://0.0.0.0:5004
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
       RabbitMQ__Host:                       rabbitmq
       RabbitMQ__Username:                   spazasure
@@ -168,6 +174,7 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT:               QA
+      ASPNETCORE_URLS:                      http://0.0.0.0:5006
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
       RabbitMQ__Host:                       rabbitmq
       RabbitMQ__Username:                   spazasure
