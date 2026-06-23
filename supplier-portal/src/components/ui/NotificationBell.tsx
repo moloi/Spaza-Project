@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, ShoppingCart, AlertTriangle, Package, X, CheckCheck, ArrowRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import clsx from 'clsx';
+import { notificationsApi } from '../../services/api';
 
 type NotifType = 'order' | 'compliance' | 'product' | 'system';
 
@@ -16,14 +17,6 @@ interface Notification {
   priority?: 'high' | 'normal';
 }
 
-const initialNotifications: Notification[] = [
-  { id: 'n1', type: 'order',      title: 'New Order Received',      message: "Mama's Spaza placed order ORD-2025-0004 for R1,450.00",                           createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),      read: false, priority: 'high' },
-  { id: 'n2', type: 'order',      title: 'Order Delivered',         message: 'ORD-2025-0003 confirmed delivered. Payment of R1,547.96 released.',               createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), read: false },
-  { id: 'n3', type: 'compliance', title: 'Document Expiring Soon',  message: 'Your Tax Clearance Certificate expires in 14 days.',                              createdAt: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), read: false, priority: 'high' },
-  { id: 'n4', type: 'product',    title: 'Product Approved',        message: 'Sunflower Oil 2L is now live on the marketplace.',                                 createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), read: true },
-  { id: 'n5', type: 'order',      title: 'Order Cancelled',         message: 'ORD-2025-0002 was cancelled by Zulu Corner Shop.',                                 createdAt: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(), read: true },
-];
-
 const typeConfig: Record<NotifType, { icon: React.ReactNode; iconBg: string; iconColor: string }> = {
   order:      { icon: <ShoppingCart size={14} />,  iconBg: 'bg-blue-100',    iconColor: 'text-blue-600' },
   compliance: { icon: <AlertTriangle size={14} />, iconBg: 'bg-amber-100',   iconColor: 'text-amber-600' },
@@ -34,9 +27,36 @@ const typeConfig: Record<NotifType, { icon: React.ReactNode; iconBg: string; ico
 export default function NotificationBell({ variant = 'supplier' }: { variant?: 'supplier' | 'admin' }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [justOpened, setJustOpened] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  // Load notifications from API
+  const loadNotifications = useCallback(async () => {
+    try {
+      const data = await notificationsApi.list({ page: 1, pageSize: 10 });
+      const items = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
+      setNotifications(items.map((n: any) => ({
+        id: n.id,
+        type: n.type ?? 'system',
+        title: n.title ?? '',
+        message: n.message ?? '',
+        createdAt: n.createdAt ?? new Date().toISOString(),
+        read: n.isRead ?? false,
+        priority: n.priority ?? 'normal',
+      })));
+    } catch {
+      // Silently fail
+    }
+  }, []);
+
+  useEffect(() => { loadNotifications(); }, [loadNotifications]);
+
+  // Poll for new notifications every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [loadNotifications]);
 
   const unread = notifications.filter((n) => !n.read);
   const unreadCount = unread.length;
@@ -58,10 +78,12 @@ export default function NotificationBell({ variant = 'supplier' }: { variant?: '
   }
 
   function markRead(id: string) {
+    notificationsApi.markRead(id).catch(() => {});
     setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
   }
 
   function markAllRead() {
+    notificationsApi.markAllRead().catch(() => {});
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   }
 

@@ -4,11 +4,23 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using SpazaSure.Infrastructure.Data;
+using SpazaSure.Shared.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// RabbitMQ Event Publisher for notifications
+builder.Services.AddSingleton(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    return new EventPublisher(
+        host: config["RabbitMQ:Host"] ?? "localhost",
+        username: config["RabbitMQ:Username"] ?? "spazasure",
+        password: config["RabbitMQ:Password"] ?? "guest"
+    );
+});
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo

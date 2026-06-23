@@ -26,7 +26,7 @@ public class OrderStatusTransitionTests
         db.SpazaShops.Add(shop);
         db.SaveChanges();
         var claims = new[] { new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()) };
-        var ctrl = new OrdersController(db)
+        var ctrl = new OrdersController(db, new SpazaSure.Shared.Helpers.EventPublisher("__nonexistent__", "x", "x"))
         {
             ControllerContext = new ControllerContext
             {

@@ -59,22 +59,4 @@ class AuthProvider extends ChangeNotifier {
     _session = null;
     notifyListeners();
   }
-
-  // Demo login — bypasses API for testing
-  Future<void> demoLogin() async {
-    // Load saved session if available
-    final saved = await AuthService.getSession();
-    if (saved != null) {
-      _session = saved;
-    } else {
-      _session = AuthSession(
-        userId: 'demo-001',
-        shopName: 'My Spaza Shop',
-        phone: '+27812345678',
-        token: 'demo-token',
-        refreshToken: 'demo-refresh',
-      );
-    }
-    notifyListeners();
-  }
 }

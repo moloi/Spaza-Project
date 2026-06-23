@@ -13,9 +13,11 @@ class OrderService {
       'paymentMethod': paymentMethod,
       'deliveryAddress': deliveryAddress,
       'items': items.map((i) => {
-        'productId': i.product.id,
-        'quantity': i.quantity,
-        'unitPrice': i.product.price,
+        return {
+          'productId': i.product.id,
+          'quantity': i.quantity,
+          'unitPrice': i.product.price,
+        };
       }).toList(),
     });
     final data = res['data'] as Map<String, dynamic>;

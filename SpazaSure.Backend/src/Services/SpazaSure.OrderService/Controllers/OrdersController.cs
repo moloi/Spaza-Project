@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SpazaSure.Infrastructure.Data;
+using SpazaSure.Shared.Helpers;
 using SpazaSure.Shared.Models;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
@@ -11,7 +12,7 @@ namespace SpazaSure.OrderService.Controllers;
 [ApiController]
 [Route("api/supplier/orders")]
 [Authorize]
-public class OrdersController(SpazaSureDbContext db) : ControllerBase
+public class OrdersController(SpazaSureDbContext db, EventPublisher events) : ControllerBase
 {
     private Guid UserId => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -86,6 +87,29 @@ public class OrdersController(SpazaSureDbContext db) : ControllerBase
         order.Status = req.Status;
         if (req.Status == "cancelled") order.RejectionReason = req.Reason;
         await db.SaveChangesAsync();
+
+        // Notify the shop owner about the status change
+        var shop = await db.SpazaShops.FirstOrDefaultAsync(s => s.Id == order.ShopId);
+        if (shop != null)
+        {
+            var statusMessages = new Dictionary<string, string>
+            {
+                ["processing"] = $"Your order {order.OrderNumber} is being prepared!",
+                ["dispatched"] = $"Your order {order.OrderNumber} has been dispatched and is on its way!",
+                ["delivered"] = $"Your order {order.OrderNumber} has been delivered.",
+                ["cancelled"] = $"Your order {order.OrderNumber} was cancelled. Reason: {req.Reason ?? "N/A"}",
+            };
+            var msg = statusMessages.GetValueOrDefault(req.Status, $"Your order {order.OrderNumber} status changed to {req.Status}.");
+            events.PublishNotification(
+                supplierId: shop.UserId.ToString(),
+                type: req.Status == "dispatched" ? "delivery" : "order",
+                title: req.Status == "dispatched" ? "Order Dispatched" : $"Order {req.Status.ToUpperInvariant()}",
+                message: msg,
+                priority: req.Status == "cancelled" ? "high" : "normal",
+                referenceId: order.Id.ToString(),
+                routingKey: $"order.{req.Status}"
+            );
+        }
 
         return Ok(ApiResponse<object>.Ok(new { order.Id, order.Status }));
     }

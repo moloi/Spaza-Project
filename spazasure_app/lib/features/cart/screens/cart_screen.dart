@@ -284,25 +284,19 @@ class _CartScreenState extends State<CartScreen> {
     setState(() => _placing = true);
     try {
       final session = await AuthService.getSession();
-      String orderNumber;
-      try {
-        orderNumber = await OrderService.placeOrder(
-          items: cart.items.toList(),
-          deliveryOption: _deliveryOption,
-          paymentMethod: _paymentMethod,
-          deliveryAddress: session?.shopName ?? '',
-        );
-      } catch (_) {
-        // Fallback for demo mode — generate a mock order number
-        orderNumber = 'SPZ-2025-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-      }
+      final orderNumber = await OrderService.placeOrder(
+        items: cart.items.toList(),
+        deliveryOption: _deliveryOption,
+        paymentMethod: _paymentMethod,
+        deliveryAddress: session?.shopName ?? '',
+      );
       cart.clear();
       if (!mounted) return;
       _showSuccess(orderNumber);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error),
+        SnackBar(content: Text('Failed to place order: $e'), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() => _placing = false);

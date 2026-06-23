@@ -67,6 +67,20 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> put(String path, [Map<String, dynamic>? body]) async {
+    try {
+      final res = await http.put(
+        Uri.parse('$baseUrl$path'),
+        headers: await _headers(),
+        body: body != null ? jsonEncode(body) : null,
+      ).timeout(const Duration(seconds: 10));
+      return _handle(res);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Unable to connect to server', 0);
+    }
+  }
+
   static Map<String, dynamic> _handle(http.Response res) {
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode >= 200 && res.statusCode < 300) return body;

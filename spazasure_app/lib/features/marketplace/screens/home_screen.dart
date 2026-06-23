@@ -7,7 +7,7 @@ import 'package:spazasure_app/core/widgets/product_card.dart';
 import 'package:spazasure_app/providers/auth_provider.dart';
 import 'package:spazasure_app/providers/cart_provider.dart';
 import 'package:spazasure_app/services/product_service.dart';
-import 'package:spazasure_app/services/mock_data.dart';
+import 'package:spazasure_app/services/order_service.dart';
 import 'package:spazasure_app/models/models.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -21,7 +21,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   bool _walletVisible = false;
   List<Product> _products = [];
   List<Category> _categories = [];
+  List<Order> _activeOrders = [];
   bool _loadingProducts = true;
+  String? _error;
 
   @override
   void initState() {
@@ -30,29 +32,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _loadData() async {
-    setState(() => _loadingProducts = true);
+    setState(() { _loadingProducts = true; _error = null; });
     try {
-      final results = await Future.wait([
-        ProductService.getProducts(pageSize: 10),
-        ProductService.getCategories(),
-      ]);
-      var products = results[0] as List<Product>;
-      var categories = results[1] as List<Category>;
+      final productsFuture = ProductService.getProducts(pageSize: 10);
+      final categoriesFuture = ProductService.getCategories();
 
-      // Use mock data if API returns empty (no products added by suppliers yet)
-      if (products.isEmpty) products = MockData.products;
-      if (categories.isEmpty) categories = MockData.categories;
+      final products = await productsFuture;
+      final categories = await categoriesFuture;
+
+      // Orders may fail if user just registered and has no orders — that's fine
+      List<Order> orders = [];
+      try {
+        orders = await OrderService.getOrders();
+      } catch (_) {}
 
       setState(() {
         _products = products;
         _categories = categories;
+        _activeOrders = orders.where((o) => o.status != 'delivered' && o.status != 'cancelled').toList();
       });
     } catch (e) {
-      // If API fails, use mock data so the app is usable
-      setState(() {
-        _products = MockData.products;
-        _categories = MockData.categories;
-      });
+      setState(() => _error = 'Unable to load data. Pull down to refresh.');
     } finally {
       setState(() => _loadingProducts = false);
     }
@@ -318,7 +318,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   // ─── PIECE 4: ACTIVE ORDER TRACKER ──────────────────────────────────────────
   Widget _buildActiveOrder() {
-    final order = MockData.orders.first;
+    if (_activeOrders.isEmpty) return const SizedBox.shrink();
+    final order = _activeOrders.first;
     return GestureDetector(
       onTap: () => Navigator.pushNamed(context, '/orders'),
       child: Container(

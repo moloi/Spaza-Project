@@ -1,9 +1,7 @@
 import 'api_service.dart';
 import '../models/models.dart';
-import 'mock_data.dart';
 
 /// Service to fetch products from the backend marketplace API.
-/// Falls back to mock data when the API is unavailable.
 class ProductService {
   /// Fetch products from backend marketplace.
   /// Supports search, category filter, supplier filter, and sorting.
@@ -39,12 +37,8 @@ class ProductService {
 
   /// Fetch a single product by ID.
   static Future<Product> getProduct(String id) async {
-    try {
-      final res = await ApiService.get('/shop/marketplace/products/$id');
-      return _mapProduct(res['data'] as Map<String, dynamic>);
-    } catch (_) {
-      return MockData.products.firstWhere((p) => p.id == id);
-    }
+    final res = await ApiService.get('/shop/marketplace/products/$id');
+    return _mapProduct(res['data'] as Map<String, dynamic>);
   }
 
   /// Fetch all categories.

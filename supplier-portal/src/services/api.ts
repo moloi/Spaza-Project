@@ -209,12 +209,38 @@ export const ordersApi = {
     api.patch(`/supplier/orders/${id}/status`, { status, reason }).then((r) => r.data),
 };
 
+// Admin Orders (all platform orders)
+export const adminOrdersApi = {
+  list: async (params?: { page?: number; pageSize?: number; status?: string; search?: string }) => {
+    const res = await api.get('/admin/orders', { params });
+    const d = res.data?.data ?? res.data;
+    return {
+      data: d?.items ?? [],
+      total: d?.total ?? 0,
+      page: d?.page ?? 1,
+      pageSize: d?.pageSize ?? 20,
+      summary: d?.summary ?? {},
+    };
+  },
+  get: (id: string) =>
+    api.get(`/admin/orders/${id}`).then((r) => r.data?.data ?? r.data),
+  updateStatus: (id: string, status: string, reason?: string) =>
+    api.patch(`/admin/orders/${id}/status`, { status, reason }).then((r) => r.data),
+};
+
 // Analytics
 export const analyticsApi = {
   summary: () => api.get<AnalyticsSummary>('/supplier/analytics/summary').then((r) => r.data),
   revenue: (period: 'week' | 'month' | 'year') =>
     api.get<RevenueDataPoint[]>('/supplier/analytics/revenue', { params: { period } }).then((r) => r.data),
   topProducts: () => api.get<TopProduct[]>('/supplier/analytics/top-products').then((r) => r.data),
+};
+
+// Admin Analytics (platform-wide)
+export const adminAnalyticsApi = {
+  summary: () => api.get('/admin/analytics/summary').then((r) => r.data?.data ?? r.data).catch(() => null),
+  revenue: (period: 'week' | 'month' | 'year') =>
+    api.get('/admin/analytics/revenue', { params: { period } }).then((r) => r.data?.data ?? r.data ?? []).catch(() => []),
 };
 
 // Maps the backend Supplier shape → frontend SupplierProfile shape
@@ -286,6 +312,18 @@ export const profileApi = {
 };
 
 export default api;
+
+// Notifications (supplier-facing)
+export const notificationsApi = {
+  list: (params?: { page?: number; pageSize?: number }) =>
+    api.get('/supplier/notifications', { params }).then((r) => r.data?.data ?? r.data ?? []).catch(() => []),
+  unreadCount: () =>
+    api.get('/supplier/notifications/unread-count').then((r) => r.data?.count ?? r.data?.data?.count ?? 0).catch(() => 0),
+  markRead: (id: string) =>
+    api.put(`/supplier/notifications/${id}/read`).then((r) => r.data),
+  markAllRead: () =>
+    api.put('/supplier/notifications/read-all').then((r) => r.data),
+};
 
 // Subscription
 export const subscriptionApi = {

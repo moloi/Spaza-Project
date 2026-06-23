@@ -14,7 +14,6 @@ export const env = {
 
   // Feature Flags
   enableDebug: import.meta.env.VITE_ENABLE_DEBUG === 'true',
-  enableMockData: import.meta.env.VITE_ENABLE_MOCK_DATA === 'true',
 
   // Environment checks
   isDevelopment: import.meta.env.MODE === 'development',

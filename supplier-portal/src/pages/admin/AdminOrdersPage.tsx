@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Search, Eye, CheckCircle, XCircle, Truck, ShoppingCart, Clock, Package, DollarSign } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Eye, CheckCircle, XCircle, Truck, ShoppingCart, Clock, DollarSign, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import clsx from 'clsx';
-import { mockOrders } from '../../services/mockData';
+import { adminOrdersApi } from '../../services/api';
 import type { Order, OrderStatus } from '../../types';
 import { OrderStatusBadge, PaymentStatusBadge } from '../../components/ui';
 import OrderDetailModal from '../orders/OrderDetailModal';
@@ -18,28 +18,58 @@ const statusTabs = [
 ];
 
 export default function AdminOrdersPage() {
-  const [orders, setOrders] = useState<Order[]>(mockOrders);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selected, setSelected] = useState<Order | null>(null);
+  const [summary, setSummary] = useState<any>({});
 
-  const filtered = orders.filter((o) => {
-    const matchSearch = o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
-                        o.shopName.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === 'all' || o.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const loadOrders = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: any = { page: 1, pageSize: 100 };
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (search) params.search = search;
+      const res = await adminOrdersApi.list(params);
+      setOrders(res.data ?? []);
+      if (res.summary) setSummary(res.summary);
+    } catch {
+      toast.error('Failed to load orders');
+    } finally {
+      setLoading(false);
+    }
+  }, [statusFilter, search]);
 
-  const updateStatus = (id: string, status: OrderStatus) => {
-    setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
-    toast.success(`Order status updated to ${status}`);
-    if (selected?.id === id) setSelected((prev) => prev ? { ...prev, status } : null);
+  useEffect(() => { loadOrders(); }, [loadOrders]);
+
+  const filtered = orders;
+
+  const updateStatus = async (id: string, status: OrderStatus) => {
+    try {
+      await adminOrdersApi.updateStatus(id, status);
+      setOrders((prev) => prev.map((o) => o.id === id ? { ...o, status } : o));
+      toast.success(`Order status updated to ${status}`);
+      if (selected?.id === id) setSelected((prev) => prev ? { ...prev, status } : null);
+    } catch {
+      toast.error('Failed to update order status');
+    }
   };
 
-  const totalRevenue   = orders.filter((o) => o.status === 'delivered').reduce((s, o) => s + o.total, 0);
-  const platformFees   = orders.reduce((s, o) => s + o.platformFee, 0);
-  const pendingCount   = orders.filter((o) => o.status === 'pending').length;
-  const disputedCount  = orders.filter((o) => o.status === 'disputed').length;
+  const totalRevenue   = summary.deliveredRevenue ?? orders.filter((o) => o.status === 'delivered').reduce((s: number, o: any) => s + (o.totalAmount ?? 0), 0);
+  const platformFees   = summary.totalPlatformFees ?? orders.reduce((s: number, o: any) => s + (o.platformCommission ?? 0), 0);
+  const pendingCount   = summary.pendingCount ?? orders.filter((o) => o.status === 'pending').length;
+
+  // Map API data to the Order shape needed by the modal
+  const mapToOrder = (o: any): Order => ({
+    id: o.id, orderNumber: o.orderNumber, shopId: o.shopId ?? '', shopName: o.shopName ?? '',
+    shopAddress: o.shopAddress ?? '', items: (o.items ?? []).map((i: any) => ({
+      productId: i.productId, productName: i.productName ?? i.name ?? '', productImage: '', quantity: i.quantity, price: i.unitPrice,
+    })), subtotal: o.subtotal ?? 0, deliveryFee: o.deliveryFee ?? 0, platformFee: o.platformCommission ?? 0,
+    total: o.totalAmount ?? 0, status: o.status, deliveryOption: o.deliveryType ?? 'standard',
+    paymentMethod: 'eft', paymentStatus: 'held', createdAt: o.createdAt,
+    estimatedDelivery: o.estimatedDelivery,
+  });
 
   return (
     <div className="p-6 space-y-5 animate-in">
@@ -54,7 +84,7 @@ export default function AdminOrdersPage() {
       <div className="grid grid-cols-4 gap-4">
         <div className="card p-4 flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0"><ShoppingCart size={18} className="text-blue-600" /></div>
-          <div><p className="text-2xl font-black tabular-nums">{orders.length}</p><p className="text-xs text-gray-500 font-semibold">Total Orders</p></div>
+          <div><p className="text-2xl font-black tabular-nums">{summary.totalOrders ?? orders.length}</p><p className="text-xs text-gray-500 font-semibold">Total Orders</p></div>
         </div>
         <div className="card p-4 flex items-center gap-3">
           <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0"><Clock size={18} className="text-amber-600" /></div>
@@ -62,18 +92,18 @@ export default function AdminOrdersPage() {
         </div>
         <div className="card p-4 flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0"><DollarSign size={18} className="text-emerald-600" /></div>
-          <div><p className="text-2xl font-black tabular-nums">R{(totalRevenue / 1000).toFixed(1)}k</p><p className="text-xs text-gray-500 font-semibold">GMV Delivered</p></div>
+          <div><p className="text-2xl font-black tabular-nums">R{(Number(totalRevenue) / 1000).toFixed(1)}k</p><p className="text-xs text-gray-500 font-semibold">GMV Delivered</p></div>
         </div>
         <div className="card p-4 flex items-center gap-3">
           <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center flex-shrink-0"><DollarSign size={18} className="text-violet-600" /></div>
-          <div><p className="text-2xl font-black tabular-nums">R{platformFees.toFixed(0)}</p><p className="text-xs text-gray-500 font-semibold">Platform Fees</p></div>
+          <div><p className="text-2xl font-black tabular-nums">R{Number(platformFees).toFixed(0)}</p><p className="text-xs text-gray-500 font-semibold">Platform Fees</p></div>
         </div>
       </div>
 
       {/* Status Tabs */}
       <div className="flex items-center gap-0.5 border-b border-gray-200 overflow-x-auto">
         {statusTabs.map(({ value, label }) => {
-          const count = value === 'all' ? orders.length : orders.filter((o) => o.status === value).length;
+          const count = value === 'all' ? (summary.totalOrders ?? orders.length) : orders.filter((o) => o.status === value).length;
           return (
             <button key={value} onClick={() => setStatusFilter(value)}
               className={clsx('flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 transition-all whitespace-nowrap',
@@ -98,7 +128,12 @@ export default function AdminOrdersPage() {
 
       {/* Table */}
       <div className="card overflow-hidden">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="p-16 text-center">
+            <Loader2 size={36} className="text-gray-300 mx-auto mb-3 animate-spin" />
+            <p className="font-bold text-gray-500">Loading orders...</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="p-16 text-center">
             <ShoppingCart size={36} className="text-gray-200 mx-auto mb-3" />
             <p className="font-bold text-gray-600">No orders found</p>
@@ -119,29 +154,31 @@ export default function AdminOrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((order) => (
+              {filtered.map((order: any) => (
                 <tr key={order.id} className="table-row">
                   <td className="table-cell">
-                    <button onClick={() => setSelected(order)} className="font-bold text-blue-600 hover:underline">{order.orderNumber}</button>
+                    <button onClick={() => setSelected(mapToOrder(order))} className="font-bold text-blue-600 hover:underline">{order.orderNumber}</button>
                   </td>
                   <td className="table-cell">
                     <p className="font-semibold text-gray-900">{order.shopName}</p>
                     <p className="text-xs text-gray-400">{order.shopAddress}</p>
                   </td>
                   <td className="table-cell text-xs text-gray-500 font-semibold">
-                    {order.items[0]?.productName ? 'Fresh Foods SA' : '—'}
+                    {order.supplierName ?? '—'}
                   </td>
-                  <td className="table-cell text-right font-black tabular-nums">R{order.total.toLocaleString()}</td>
-                  <td className="table-cell text-right font-semibold text-violet-700 tabular-nums">R{order.platformFee.toFixed(2)}</td>
+                  <td className="table-cell text-right font-black tabular-nums">R{Number(order.totalAmount ?? 0).toLocaleString()}</td>
+                  <td className="table-cell text-right font-semibold text-violet-700 tabular-nums">R{Number(order.platformCommission ?? 0).toFixed(2)}</td>
                   <td className="table-cell text-center"><OrderStatusBadge status={order.status} /></td>
-                  <td className="table-cell text-center"><PaymentStatusBadge status={order.paymentStatus} /></td>
+                  <td className="table-cell text-center"><PaymentStatusBadge status={order.paymentStatus ?? 'pending'} /></td>
                   <td className="table-cell text-xs text-gray-400">
-                    <p>{format(new Date(order.createdAt), 'dd MMM yyyy')}</p>
-                    <p>{format(new Date(order.createdAt), 'HH:mm')}</p>
+                    {order.createdAt && <>
+                      <p>{format(new Date(order.createdAt), 'dd MMM yyyy')}</p>
+                      <p>{format(new Date(order.createdAt), 'HH:mm')}</p>
+                    </>}
                   </td>
                   <td className="table-cell">
                     <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => setSelected(order)} className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="View">
+                      <button onClick={() => setSelected(mapToOrder(order))} className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="View">
                         <Eye size={14} />
                       </button>
                       {order.status === 'pending' && (

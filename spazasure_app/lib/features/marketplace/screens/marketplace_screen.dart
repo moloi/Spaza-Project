@@ -3,7 +3,6 @@ import 'package:spazasure_app/core/constants/app_colors.dart';
 import 'package:spazasure_app/core/constants/app_text_styles.dart';
 import 'package:spazasure_app/core/widgets/product_card.dart';
 import 'package:spazasure_app/services/product_service.dart';
-import 'package:spazasure_app/services/mock_data.dart';
 import 'package:spazasure_app/models/models.dart';
 
 class MarketplaceScreen extends StatefulWidget {

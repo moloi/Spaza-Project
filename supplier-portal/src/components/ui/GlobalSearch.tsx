@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, Package, ShoppingCart, BarChart2, User, X, ArrowRight, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { mockProducts, mockOrders } from '../../services/mockData';
+import { productsApi, ordersApi } from '../../services/api';
 
 interface SearchResult {
   id: string;
@@ -45,19 +45,45 @@ export default function GlobalSearch() {
     if (!q.trim()) { setResults([]); setLoading(false); return; }
     setLoading(true);
     clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
+    timerRef.current = setTimeout(async () => {
       const ql = q.toLowerCase();
-      const productResults: SearchResult[] = mockProducts
-        .filter((p) => p.name.toLowerCase().includes(ql) || p.sku.toLowerCase().includes(ql))
-        .slice(0, 3)
-        .map((p) => ({ id: p.id, type: 'product', label: p.name, sub: `SKU: ${p.sku} · R${p.price}`, to: '/products', icon: <Package size={14} /> }));
 
-      const orderResults: SearchResult[] = mockOrders
-        .filter((o) => o.orderNumber.toLowerCase().includes(ql) || o.shopName.toLowerCase().includes(ql))
-        .slice(0, 3)
-        .map((o) => ({ id: o.id, type: 'order', label: o.orderNumber, sub: `${o.shopName} · R${o.total.toLocaleString()}`, to: '/orders', icon: <ShoppingCart size={14} /> }));
-
+      // Search pages locally (always fast)
       const pageResults: SearchResult[] = pages.filter((p) => p.label.toLowerCase().includes(ql));
+
+      // Search products and orders from real API
+      let productResults: SearchResult[] = [];
+      let orderResults: SearchResult[] = [];
+
+      try {
+        const [prodRes, ordRes] = await Promise.allSettled([
+          productsApi.list({ search: q, pageSize: 3 }),
+          ordersApi.list({ pageSize: 50 }),
+        ]);
+
+        if (prodRes.status === 'fulfilled') {
+          productResults = (prodRes.value.data ?? []).slice(0, 3).map((p: any) => ({
+            id: p.id, type: 'product' as const, label: p.name,
+            sub: `SKU: ${p.sku} · R${p.price}`, to: '/products',
+            icon: <Package size={14} />,
+          }));
+        }
+
+        if (ordRes.status === 'fulfilled') {
+          const rawData = ordRes.value?.data as any;
+          const allOrders = rawData?.items ?? (Array.isArray(rawData) ? rawData : []);
+          orderResults = allOrders
+            .filter((o: any) => o.orderNumber?.toLowerCase().includes(ql) || o.shop?.shopName?.toLowerCase().includes(ql))
+            .slice(0, 3)
+            .map((o: any) => ({
+              id: o.id, type: 'order' as const, label: o.orderNumber,
+              sub: `${o.shop?.shopName ?? 'Shop'} · R${Number(o.totalAmount ?? 0).toLocaleString()}`,
+              to: '/orders', icon: <ShoppingCart size={14} />,
+            }));
+        }
+      } catch {
+        // Silently fail — just show page results
+      }
 
       setResults([...pageResults, ...productResults, ...orderResults]);
       setLoading(false);

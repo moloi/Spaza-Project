@@ -3,7 +3,17 @@ import { Bell, CheckCircle, AlertTriangle, ShoppingCart, Users, X, Send, Plus } 
 import { format, isToday, isYesterday } from 'date-fns';
 import clsx from 'clsx';
 import toast from 'react-hot-toast';
-import { mockAdminNotifications, type AdminNotification } from '../../services/mockData';
+
+interface AdminNotification {
+  id: string;
+  type: 'system' | 'compliance' | 'order' | 'supplier';
+  title: string;
+  message: string;
+  sentTo: 'all' | 'suppliers' | 'specific';
+  createdAt: string;
+  read: boolean;
+  priority: 'high' | 'normal';
+}
 
 const typeConfig: Record<AdminNotification['type'], { icon: React.ReactNode; color: string; bg: string }> = {
   system:     { icon: <Bell size={15} />,           color: 'text-slate-600',  bg: 'bg-slate-100' },
@@ -20,7 +30,7 @@ function getDateLabel(d: string) {
 }
 
 export default function AdminNotificationsPage() {
-  const [notifications, setNotifications] = useState<AdminNotification[]>(mockAdminNotifications);
+  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [typeFilter, setTypeFilter] = useState<'all' | AdminNotification['type']>('all');
   const [showCompose, setShowCompose] = useState(false);
   const [compose, setCompose] = useState({ title: '', message: '', sentTo: 'all' as 'all' | 'suppliers' });

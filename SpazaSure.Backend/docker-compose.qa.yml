@@ -141,6 +141,44 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  analytics-service:
+    build:
+      context: .
+      dockerfile: src/Services/SpazaSure.AnalyticsService/Dockerfile
+    container_name: spazasure-qa-analytics
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT:               QA
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${QA_RABBITMQ_PASSWORD:-SpazaRabbitQA2026}
+      Jwt__Secret:                          ${QA_JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  compliance-service:
+    build:
+      context: .
+      dockerfile: src/Services/SpazaSure.ComplianceService/Dockerfile
+    container_name: spazasure-qa-compliance
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT:               QA
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=spazasure_qa;Username=spazasure_qa_user;Password=${QA_DB_PASSWORD}"
+      RabbitMQ__Host:                       rabbitmq
+      RabbitMQ__Username:                   spazasure
+      RabbitMQ__Password:                   ${QA_RABBITMQ_PASSWORD:-SpazaRabbitQA2026}
+      Jwt__Secret:                          ${QA_JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
   gateway:
     build:
       context: .
@@ -157,6 +195,8 @@ services:
       - order-service
       - user-service
       - notification-service
+      - analytics-service
+      - compliance-service
 
 volumes:
   qa_postgres_data:

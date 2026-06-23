@@ -27,61 +27,31 @@ class AuthService {
   static const _phoneKey = 'phone';
   static const _fullNameKey = 'full_name';
 
-  // ── DEV TEST OTP ───────────────────────────────────────────────────────
-  // When backend is unavailable, use OTP "123456" to log in with a demo account.
-  static const _devOtp = '123456';
-
   // ── Step 1: Request OTP ───────────────────────────────────────────────────
   static Future<String?> sendOtp(String phone, {String purpose = 'login'}) async {
     final formatted = _formatPhone(phone);
-    try {
-      final res = await ApiService.post(
-        '/shop/auth/send-otp?purpose=$purpose',
-        {'phone': formatted},
-        auth: false,
-      );
-      // In QA/dev, backend returns the OTP for auto-fill
-      final data = res['data'];
-      if (data is Map<String, dynamic> && data.containsKey('otp')) {
-        return data['otp'] as String;
-      }
-      return null;
-    } catch (_) {
-      // Backend unavailable — allow dev OTP "123456"
-      return _devOtp;
+    final res = await ApiService.post(
+      '/shop/auth/send-otp?purpose=$purpose',
+      {'phone': formatted},
+      auth: false,
+    );
+    // In QA/dev, backend returns the OTP for auto-fill
+    final data = res['data'];
+    if (data is Map<String, dynamic> && data.containsKey('otp')) {
+      return data['otp'] as String;
     }
+    return null;
   }
 
   // ── Step 2a: Verify OTP + Login ───────────────────────────────────────────
   static Future<AuthSession> verifyLogin(String phone, String otp) async {
     final formatted = _formatPhone(phone);
-    try {
-      final res = await ApiService.post(
-        '/shop/auth/login',
-        {'phone': formatted, 'otp': otp},
-        auth: false,
-      );
-      return _parseAndSave(res['data'] as Map<String, dynamic>);
-    } catch (_) {
-      // Fallback: accept dev OTP when backend is down
-      if (otp == _devOtp) {
-        // Try to load previously saved session data (from registration)
-        final prefs = await SharedPreferences.getInstance();
-        final savedShopName = prefs.getString(_shopNameKey) ?? 'My Spaza Shop';
-        final savedFullName = prefs.getString(_fullNameKey) ?? '';
-        final savedUserId = prefs.getString(_userIdKey) ?? 'dev-001';
-
-        return _parseAndSave({
-          'userId': savedUserId,
-          'shopName': savedShopName,
-          'fullName': savedFullName,
-          'phone': formatted,
-          'accessToken': 'dev-token-${DateTime.now().millisecondsSinceEpoch}',
-          'refreshToken': 'dev-refresh-token',
-        });
-      }
-      rethrow;
-    }
+    final res = await ApiService.post(
+      '/shop/auth/login',
+      {'phone': formatted, 'otp': otp},
+      auth: false,
+    );
+    return _parseAndSave(res['data'] as Map<String, dynamic>);
   }
 
   // ── Step 2b: Verify OTP + Register ───────────────────────────────────────
@@ -94,34 +64,19 @@ class AuthService {
     String? idNumber,
   }) async {
     final formatted = _formatPhone(phone);
-    try {
-      final res = await ApiService.post(
-        '/shop/auth/register',
-        {
-          'phone': formatted,
-          'otp': otp,
-          'fullName': fullName,
-          'shopName': shopName,
-          'address': address,
-          if (idNumber != null && idNumber.isNotEmpty) 'idNumber': idNumber,
-        },
-        auth: false,
-      );
-      return _parseAndSave(res['data'] as Map<String, dynamic>);
-    } catch (_) {
-      // Fallback: accept dev OTP when backend is down
-      if (otp == _devOtp) {
-        return _parseAndSave({
-          'userId': 'dev-${DateTime.now().millisecondsSinceEpoch}',
-          'shopName': shopName,
-          'fullName': fullName,
-          'phone': formatted,
-          'accessToken': 'dev-token-${DateTime.now().millisecondsSinceEpoch}',
-          'refreshToken': 'dev-refresh-token',
-        });
-      }
-      rethrow;
-    }
+    final res = await ApiService.post(
+      '/shop/auth/register',
+      {
+        'phone': formatted,
+        'otp': otp,
+        'fullName': fullName,
+        'shopName': shopName,
+        'address': address,
+        if (idNumber != null && idNumber.isNotEmpty) 'idNumber': idNumber,
+      },
+      auth: false,
+    );
+    return _parseAndSave(res['data'] as Map<String, dynamic>);
   }
 
   // ── Session helpers ───────────────────────────────────────────────────────
