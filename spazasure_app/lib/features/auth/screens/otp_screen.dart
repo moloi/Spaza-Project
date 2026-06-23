@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -14,22 +13,48 @@ class OtpScreen extends StatefulWidget {
   State<OtpScreen> createState() => _OtpScreenState();
 }
 
-class _OtpScreenState extends State<OtpScreen> with TickerProviderStateMixin {
+class _OtpScreenState extends State<OtpScreen> {
   String _otp = '';
   bool _isLoading = false;
   int _resendTimer = 30;
-  late AnimationController _bgController;
+  final _pinController = TextEditingController();
+  bool _autoFilled = false;
 
   @override
   void initState() {
     super.initState();
-    _bgController = AnimationController(vsync: this, duration: const Duration(seconds: 8))..repeat();
     _startTimer();
+    // Listen to pin controller changes to keep _otp in sync
+    _pinController.addListener(() {
+      if (_pinController.text != _otp) {
+        setState(() => _otp = _pinController.text);
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Auto-fill OTP if provided (QA/dev mode)
+    if (!_autoFilled) {
+      final args = _args(context);
+      final autoOtp = args['otp'] as String?;
+      if (autoOtp != null && autoOtp.length == 6) {
+        _autoFilled = true;
+        // Delay to allow the widget to fully build
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _pinController.text = autoOtp;
+            setState(() => _otp = autoOtp);
+          }
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
-    _bgController.dispose();
+    _pinController.dispose();
     super.dispose();
   }
 
@@ -49,7 +74,20 @@ class _OtpScreenState extends State<OtpScreen> with TickerProviderStateMixin {
       (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
 
   Future<void> _verify(BuildContext context) async {
-    if (_otp.length != 6) return;
+    // Use pin controller text as source of truth
+    final otpToVerify = _pinController.text.isNotEmpty ? _pinController.text : _otp;
+    if (otpToVerify.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please enter the full 6-digit code'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
     final args = _args(context);
     final phone = args['phone'] as String? ?? '';
     final purpose = args['purpose'] as String? ?? 'login';
@@ -57,11 +95,11 @@ class _OtpScreenState extends State<OtpScreen> with TickerProviderStateMixin {
     setState(() => _isLoading = true);
     try {
       if (purpose == 'login') {
-        await context.read<AuthProvider>().verifyLogin(phone, _otp);
+        await context.read<AuthProvider>().verifyLogin(phone, otpToVerify);
       } else {
         await context.read<AuthProvider>().verifyRegister(
           phone: phone,
-          otp: _otp,
+          otp: otpToVerify,
           fullName: args['fullName'] as String? ?? '',
           shopName: args['shopName'] as String? ?? '',
           address: args['address'] as String? ?? '',
@@ -73,7 +111,12 @@ class _OtpScreenState extends State<OtpScreen> with TickerProviderStateMixin {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -85,21 +128,39 @@ class _OtpScreenState extends State<OtpScreen> with TickerProviderStateMixin {
     final phone = args['phone'] as String? ?? '';
     final purpose = args['purpose'] as String? ?? 'login';
     try {
+      String? newOtp;
       if (purpose == 'login') {
-        await context.read<AuthProvider>().sendLoginOtp(phone);
+        newOtp = await context.read<AuthProvider>().sendLoginOtp(phone);
       } else {
-        await context.read<AuthProvider>().sendRegisterOtp(phone);
+        newOtp = await context.read<AuthProvider>().sendRegisterOtp(phone);
       }
       setState(() => _resendTimer = 30);
       _startTimer();
+
+      // Auto-fill resent OTP
+      if (newOtp != null && newOtp.length == 6 && mounted) {
+        _pinController.text = newOtp;
+        setState(() => _otp = newOtp!);
+      }
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('OTP resent successfully'), backgroundColor: AppColors.success),
+        SnackBar(
+          content: const Text('OTP resent successfully'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString()), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
       );
     }
   }
@@ -108,189 +169,321 @@ class _OtpScreenState extends State<OtpScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final args = _args(context);
     final phone = args['phone'] as String? ?? '';
+    final hasOtp = _otp.length == 6;
 
     return Scaffold(
-      body: Stack(
-        children: [
-          AnimatedBuilder(
-            animation: _bgController,
-            builder: (_, __) => Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment(sin(_bgController.value * 2 * pi), cos(_bgController.value * 2 * pi)),
-                  end: Alignment(-sin(_bgController.value * 2 * pi), -cos(_bgController.value * 2 * pi)),
-                  colors: const [Color(0xFF0D3B0F), Color(0xFF1B5E20), Color(0xFF2E7D32)],
-                ),
-              ),
-            ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF0A2E0C),
+              Color(0xFF144417),
+              Color(0xFF1B5E20),
+            ],
           ),
-          Positioned(top: -80, right: -80, child: _GlowCircle(size: 200, color: const Color(0xFF4CAF50).withValues(alpha: 0.15))),
-          Positioned(bottom: -100, left: -100, child: _GlowCircle(size: 250, color: const Color(0xFF81C784).withValues(alpha: 0.1))),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(
-                children: [
-                  const SizedBox(height: 20),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: Container(
-                        width: 44, height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                        ),
-                        child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 22),
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Column(
+              children: [
+                const SizedBox(height: 30),
+
+                // ── Back button ──
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
                       ),
+                      child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
                     ),
                   ),
-                  const SizedBox(height: 40),
-                  Container(
-                    width: 90, height: 90,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)]),
-                      borderRadius: BorderRadius.circular(26),
-                      boxShadow: [BoxShadow(color: const Color(0xFF4CAF50).withValues(alpha: 0.5), blurRadius: 30, spreadRadius: 5)],
-                    ),
-                    child: const Icon(Icons.sms_rounded, color: Colors.white, size: 44),
-                  ).animate().scale(begin: const Offset(0.5, 0.5), duration: 600.ms, curve: Curves.elasticOut).fadeIn(),
-                  const SizedBox(height: 32),
-                  Container(
-                    padding: const EdgeInsets.all(28),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 30, offset: const Offset(0, 10))],
-                    ),
-                    child: Column(
-                      children: [
-                        Text('Verify Your Number',
-                            style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
-                        const SizedBox(height: 8),
-                        Text(
-                          phone.isNotEmpty
-                              ? 'We sent a 6-digit code to\n$phone'
-                              : 'Enter the 6-digit code we sent you',
-                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.white.withValues(alpha: 0.7), height: 1.5),
-                          textAlign: TextAlign.center,
+                ).animate().fadeIn(duration: 400.ms),
+
+                const SizedBox(height: 30),
+
+                // ── Icon ──
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF4CAF50).withOpacity(0.3),
+                        blurRadius: 30,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.verified_user_rounded,
+                    color: AppColors.primary,
+                    size: 38,
+                  ),
+                ).animate().fadeIn(duration: 600.ms).scale(
+                    begin: const Offset(0.8, 0.8),
+                    end: const Offset(1, 1),
+                    duration: 600.ms,
+                    curve: Curves.easeOutBack),
+
+                const SizedBox(height: 20),
+
+                // ── Title ──
+                Text(
+                  'Verification',
+                  style: GoogleFonts.poppins(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ).animate().fadeIn(delay: 200.ms),
+
+                const SizedBox(height: 6),
+
+                Text(
+                  phone.isNotEmpty
+                      ? 'Code sent to $phone'
+                      : 'Enter the code we sent you',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    color: const Color(0xFF81C784),
+                    letterSpacing: 0.3,
+                  ),
+                ).animate().fadeIn(delay: 300.ms),
+
+                const SizedBox(height: 40),
+
+                // ── OTP Card ──
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.15),
+                        blurRadius: 30,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Card title
+                      Text(
+                        'Enter 6-Digit Code',
+                        style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF1A1A1A),
                         ),
-                        const SizedBox(height: 32),
-                        PinCodeTextField(
-                          appContext: context,
-                          length: 6,
-                          onChanged: (v) => _otp = v,
-                          onCompleted: (_) => _verify(context),
-                          pinTheme: PinTheme(
-                            shape: PinCodeFieldShape.box,
-                            borderRadius: BorderRadius.circular(14),
-                            fieldHeight: 56,
-                            fieldWidth: 46,
-                            activeFillColor: Colors.white.withValues(alpha: 0.15),
-                            inactiveFillColor: Colors.white.withValues(alpha: 0.08),
-                            selectedFillColor: Colors.white.withValues(alpha: 0.2),
-                            activeColor: const Color(0xFF4CAF50),
-                            inactiveColor: Colors.white.withValues(alpha: 0.2),
-                            selectedColor: Colors.white,
-                          ),
-                          enableActiveFill: true,
-                          keyboardType: TextInputType.number,
-                          animationType: AnimationType.scale,
-                          textStyle: GoogleFonts.poppins(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700),
-                          cursorColor: Colors.white,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _otp.length == 6
+                            ? 'Code filled — tap Verify to continue'
+                            : 'Check your SMS messages',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          color: _otp.length == 6
+                              ? AppColors.primary
+                              : const Color(0xFF757575),
+                          fontWeight: _otp.length == 6
+                              ? FontWeight.w600
+                              : FontWeight.w400,
                         ),
-                        const SizedBox(height: 16),
-                        _resendTimer > 0
-                            ? Text(
-                                'Resend code in ${_resendTimer}s',
-                                style: GoogleFonts.poppins(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
-                              )
-                            : GestureDetector(
-                                onTap: () => _resend(context),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                      ),
+
+                      const SizedBox(height: 28),
+
+                      // ── PIN Input ──
+                      PinCodeTextField(
+                        appContext: context,
+                        length: 6,
+                        controller: _pinController,
+                        onChanged: (v) {
+                          setState(() => _otp = v);
+                        },
+                        onCompleted: (_) => _verify(context),
+                        pinTheme: PinTheme(
+                          shape: PinCodeFieldShape.box,
+                          borderRadius: BorderRadius.circular(12),
+                          fieldHeight: 54,
+                          fieldWidth: 44,
+                          activeFillColor: const Color(0xFFF0F9F0),
+                          inactiveFillColor: const Color(0xFFF5F5F5),
+                          selectedFillColor: const Color(0xFFE8F5E9),
+                          activeColor: AppColors.primary,
+                          inactiveColor: const Color(0xFFE0E0E0),
+                          selectedColor: AppColors.primaryLight,
+                        ),
+                        enableActiveFill: true,
+                        keyboardType: TextInputType.number,
+                        animationType: AnimationType.scale,
+                        textStyle: GoogleFonts.poppins(
+                          color: const Color(0xFF1A1A1A),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        cursorColor: AppColors.primary,
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // ── Resend section ──
+                      _resendTimer > 0
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.timer_outlined,
+                                    size: 16, color: Color(0xFF9E9E9E)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Resend in ${_resendTimer}s',
+                                  style: GoogleFonts.poppins(
+                                    color: const Color(0xFF9E9E9E),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  child: Text('Resend Code',
-                                      style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
+                                ),
+                              ],
+                            )
+                          : GestureDetector(
+                              onTap: () => _resend(context),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.refresh_rounded,
+                                      size: 18, color: AppColors.primary),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Resend Code',
+                                    style: GoogleFonts.poppins(
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                      const SizedBox(height: 28),
+
+                      // ── Verify Button ──
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : () => _verify(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: hasOtp
+                                ? AppColors.primary
+                                : const Color(0xFF9E9E9E),
+                            disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
+                            foregroundColor: Colors.white,
+                            elevation: hasOtp ? 4 : 0,
+                            shadowColor: AppColors.primary.withOpacity(0.3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Verify & Continue',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Icon(Icons.arrow_forward_rounded, size: 20),
+                                  ],
+                                ),
+                        ),
+                      ),
+
+                      // ── Dev hint ──
+                      if (_otp.length < 6) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF3E0),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.lightbulb_outline, size: 16, color: Color(0xFFE65100)),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Test code: 123456',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFFE65100),
                                 ),
                               ),
-                        const SizedBox(height: 28),
-                        _VerifyButton(
-                          isLoading: _isLoading,
-                          onPressed: () => _verify(context),
+                            ],
+                          ),
                         ),
                       ],
-                    ),
-                  ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.15, end: 0, delay: 300.ms),
-                  const SizedBox(height: 40),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+                    ],
+                  ),
+                )
+                    .animate()
+                    .fadeIn(delay: 400.ms, duration: 500.ms)
+                    .slideY(begin: 0.1, end: 0, delay: 400.ms, duration: 500.ms),
 
-class _GlowCircle extends StatelessWidget {
-  final double size;
-  final Color color;
-  const _GlowCircle({required this.size, required this.color});
-  @override
-  Widget build(BuildContext context) => Container(
-      width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: color));
-}
+                const SizedBox(height: 32),
 
-class _VerifyButton extends StatefulWidget {
-  final bool isLoading;
-  final VoidCallback onPressed;
-  const _VerifyButton({required this.isLoading, required this.onPressed});
-  @override
-  State<_VerifyButton> createState() => _VerifyButtonState();
-}
-
-class _VerifyButtonState extends State<_VerifyButton> {
-  bool _pressed = false;
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTap: widget.isLoading ? null : widget.onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        width: double.infinity, height: 56,
-        transform: Matrix4.diagonal3Values(_pressed ? 0.97 : 1.0, _pressed ? 0.97 : 1.0, 1.0),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)]),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(
-              color: const Color(0xFF4CAF50).withValues(alpha: _pressed ? 0.2 : 0.4),
-              blurRadius: _pressed ? 10 : 20,
-              offset: const Offset(0, 8))],
-        ),
-        child: Center(
-          child: widget.isLoading
-              ? const SizedBox(width: 24, height: 24,
-                  child: CircularProgressIndicator(strokeWidth: 2.5, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
-              : Row(
+                // ── Security note ──
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text('Verify & Continue',
-                        style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.verified_rounded, color: Colors.white, size: 20),
+                    Icon(Icons.shield_outlined,
+                        size: 14, color: Colors.white.withOpacity(0.5)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Your code expires in 5 minutes',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        color: Colors.white.withOpacity(0.5),
+                      ),
+                    ),
                   ],
-                ),
+                ).animate().fadeIn(delay: 600.ms),
+
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
         ),
       ),
     );

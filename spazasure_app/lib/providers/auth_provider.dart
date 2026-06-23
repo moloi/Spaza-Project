@@ -9,6 +9,8 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _session != null;
   bool get initialized => _initialized;
   String get shopName => _session?.shopName ?? '';
+  String get fullName => _session?.fullName ?? '';
+  String get phone => _session?.phone ?? '';
 
   Future<void> init() async {
     _session = await AuthService.getSession();
@@ -17,13 +19,13 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Step 1 — send OTP (login flow)
-  Future<void> sendLoginOtp(String phone) async {
-    await AuthService.sendOtp(phone, purpose: 'login');
+  Future<String?> sendLoginOtp(String phone) async {
+    return await AuthService.sendOtp(phone, purpose: 'login');
   }
 
   // Step 1 — send OTP (registration flow)
-  Future<void> sendRegisterOtp(String phone) async {
-    await AuthService.sendOtp(phone, purpose: 'registration');
+  Future<String?> sendRegisterOtp(String phone) async {
+    return await AuthService.sendOtp(phone, purpose: 'registration');
   }
 
   // Step 2 — verify OTP + login
@@ -60,13 +62,19 @@ class AuthProvider extends ChangeNotifier {
 
   // Demo login — bypasses API for testing
   Future<void> demoLogin() async {
-    _session = AuthSession(
-      userId: 'demo-001',
-      shopName: "Thabo's Spaza Shop",
-      phone: '+27812345678',
-      token: 'demo-token',
-      refreshToken: 'demo-refresh',
-    );
+    // Load saved session if available
+    final saved = await AuthService.getSession();
+    if (saved != null) {
+      _session = saved;
+    } else {
+      _session = AuthSession(
+        userId: 'demo-001',
+        shopName: 'My Spaza Shop',
+        phone: '+27812345678',
+        token: 'demo-token',
+        refreshToken: 'demo-refresh',
+      );
+    }
     notifyListeners();
   }
 }

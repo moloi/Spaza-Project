@@ -1,8 +1,8 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:spazasure_app/core/constants/app_colors.dart';
 import 'package:spazasure_app/providers/auth_provider.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -12,10 +12,9 @@ class RegisterScreen extends StatefulWidget {
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStateMixin {
+class _RegisterScreenState extends State<RegisterScreen> {
   final _pageController = PageController();
   int _currentStep = 0;
-  late AnimationController _bgController;
 
   final _nameController = TextEditingController();
   final _idController = TextEditingController();
@@ -24,29 +23,17 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
   final _addressController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _bgController = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat();
-  }
-
-  @override
   void dispose() {
-    _bgController.dispose();
     _pageController.dispose();
+    _nameController.dispose();
+    _idController.dispose();
+    _phoneController.dispose();
+    _shopNameController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
   void _nextStep() {
-    if (_currentStep == 0) {
-      // Send OTP when moving from owner details to shop details
-      final phone = _phoneController.text.trim();
-      if (phone.isEmpty) return;
-      context.read<AuthProvider>().sendRegisterOtp(phone).catchError((e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: const Color(0xFFC62828)),
-        );
-      });
-    }
     if (_currentStep < 2) {
       setState(() => _currentStep++);
       _pageController.nextPage(duration: 500.ms, curve: Curves.easeOutCubic);
@@ -60,125 +47,213 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
     }
   }
 
+  void _submit() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) return;
+
+    // Send OTP and get it back (auto-fill in QA/dev)
+    String? otp;
+    try {
+      otp = await context.read<AuthProvider>().sendRegisterOtp(phone);
+    } catch (_) {
+      // If sending fails, still navigate — user can enter code manually or use 123456
+    }
+
+    if (!mounted) return;
+    Navigator.pushNamed(
+      context,
+      '/otp',
+      arguments: {
+        'phone': phone,
+        'purpose': 'registration',
+        'fullName': _nameController.text.trim(),
+        'shopName': _shopNameController.text.trim(),
+        'address': _addressController.text.trim(),
+        'idNumber': _idController.text.trim(),
+        if (otp != null) 'otp': otp,
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // Animated gradient background
-          AnimatedBuilder(
-            animation: _bgController,
-            builder: (_, __) => Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment(sin(_bgController.value * 2 * pi), cos(_bgController.value * 2 * pi)),
-                  end: Alignment(-sin(_bgController.value * 2 * pi), -cos(_bgController.value * 2 * pi)),
-                  colors: const [Color(0xFF0D3B0F), Color(0xFF1B5E20), Color(0xFF2E7D32)],
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF0A2E0C),
+              Color(0xFF144417),
+              Color(0xFF1B5E20),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => _currentStep > 0 ? _prevStep() : Navigator.pop(context),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.2)),
+                        ),
+                        child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Create Account',
+                      style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                    const Spacer(),
+                    const SizedBox(width: 44),
+                  ],
+                ),
+              ).animate().fadeIn(duration: 400.ms),
+
+              // Progress indicator
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                child: _StepIndicator(currentStep: _currentStep),
+              ),
+
+              // Form pages
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _buildOwnerDetails(),
+                    _buildShopDetails(),
+                    _buildDocumentUpload(),
+                  ],
                 ),
               ),
-            ),
+            ],
           ),
-
-          // Decorative elements
-          Positioned(top: -60, left: -60, child: _GlowCircle(size: 180, color: const Color(0xFF4CAF50).withValues(alpha: 0.12))),
-          Positioned(bottom: -80, right: -80, child: _GlowCircle(size: 220, color: const Color(0xFF81C784).withValues(alpha: 0.08))),
-
-          SafeArea(
-            child: Column(
-              children: [
-                // Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () => _currentStep > 0 ? _prevStep() : Navigator.pop(context),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                          ),
-                          child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 22),
-                        ),
-                      ),
-                      const Spacer(),
-                      Text('Register', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.white)),
-                      const Spacer(),
-                      const SizedBox(width: 44),
-                    ],
-                  ),
-                ),
-
-                // Progress indicator
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-                  child: _AnimatedProgressBar(currentStep: _currentStep),
-                ),
-
-                // Form pages
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    physics: const NeverScrollableScrollPhysics(),
-                    children: [
-                      _buildOwnerDetails(),
-                      _buildShopDetails(),
-                      _buildDocumentUpload(),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildOwnerDetails() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         children: [
-          _GlassCard(
+          // White card with form
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 30,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Section header
                 Row(
                   children: [
                     Container(
-                      width: 50,
-                      height: 50,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)]),
-                        borderRadius: BorderRadius.circular(14),
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.person_rounded, color: Colors.white, size: 26),
+                      child: const Icon(Icons.person_rounded, color: AppColors.primary, size: 24),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Owner Information', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-                        Text('Tell us about yourself', style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withValues(alpha: 0.6))),
+                        Text(
+                          'Owner Details',
+                          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A)),
+                        ),
+                        Text(
+                          'Tell us about yourself',
+                          style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF757575)),
+                        ),
                       ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
-                _GlassTextField(controller: _nameController, label: 'Full Name', hint: 'Enter your full name', icon: Icons.person_outline_rounded),
-                const SizedBox(height: 18),
-                _GlassTextField(controller: _idController, label: 'ID Number', hint: 'Enter your SA ID number', icon: Icons.badge_outlined, keyboardType: TextInputType.number),
-                const SizedBox(height: 18),
-                _GlassTextField(controller: _phoneController, label: 'Phone Number', hint: '81 234 5678', icon: Icons.phone_outlined, keyboardType: TextInputType.phone, prefix: '🇿🇦 +27'),
+                const SizedBox(height: 24),
+
+                // Full Name
+                _FormField(
+                  controller: _nameController,
+                  label: 'Full Name',
+                  hint: 'Enter your full name',
+                  icon: Icons.person_outline_rounded,
+                ),
+                const SizedBox(height: 16),
+
+                // ID Number
+                _FormField(
+                  controller: _idController,
+                  label: 'ID Number',
+                  hint: 'Enter your SA ID number',
+                  icon: Icons.badge_outlined,
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+
+                // Phone Number
+                _PhoneField(controller: _phoneController),
               ],
             ),
-          ).animate().fadeIn(duration: 500.ms).slideX(begin: 0.1, end: 0),
+          )
+              .animate()
+              .fadeIn(delay: 200.ms, duration: 500.ms)
+              .slideY(begin: 0.1, end: 0, delay: 200.ms, duration: 500.ms),
+
           const SizedBox(height: 24),
-          _PremiumButton(text: 'Continue', icon: Icons.arrow_forward_rounded, onPressed: _nextStep),
+
+          // Continue button
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton(
+              onPressed: _nextStep,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Continue', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward_rounded, size: 20),
+                ],
+              ),
+            ),
+          ).animate().fadeIn(delay: 400.ms),
         ],
       ),
     );
@@ -186,45 +261,140 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
 
   Widget _buildShopDetails() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         children: [
-          _GlassCard(
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 30,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 50,
-                      height: 50,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)]),
-                        borderRadius: BorderRadius.circular(14),
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.store_rounded, color: Colors.white, size: 26),
+                      child: const Icon(Icons.store_rounded, color: AppColors.primary, size: 24),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Shop Details', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-                        Text('Tell us about your shop', style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withValues(alpha: 0.6))),
+                        Text(
+                          'Shop Details',
+                          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A)),
+                        ),
+                        Text(
+                          'Tell us about your shop',
+                          style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF757575)),
+                        ),
                       ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
-                _GlassTextField(controller: _shopNameController, label: 'Shop Name', hint: 'Enter your shop name', icon: Icons.store_outlined),
+                const SizedBox(height: 24),
+
+                _FormField(
+                  controller: _shopNameController,
+                  label: 'Shop Name',
+                  hint: 'Enter your shop name',
+                  icon: Icons.store_outlined,
+                ),
+                const SizedBox(height: 16),
+
+                _FormField(
+                  controller: _addressController,
+                  label: 'Physical Address',
+                  hint: 'Enter shop address',
+                  icon: Icons.location_on_outlined,
+                ),
                 const SizedBox(height: 18),
-                _GlassTextField(controller: _addressController, label: 'Physical Address', hint: 'Enter shop address', icon: Icons.location_on_outlined),
-                const SizedBox(height: 18),
-                _LocationCapture(),
+
+                // GPS location button
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFC8E6C9)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.my_location_rounded, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'GPS Location',
+                              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A1A)),
+                            ),
+                            Text(
+                              'Tap to capture your shop location',
+                              style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right_rounded, color: Color(0xFF757575)),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ).animate().fadeIn(duration: 500.ms).slideX(begin: 0.1, end: 0),
+          )
+              .animate()
+              .fadeIn(delay: 200.ms, duration: 500.ms)
+              .slideY(begin: 0.1, end: 0, delay: 200.ms, duration: 500.ms),
+
           const SizedBox(height: 24),
-          _PremiumButton(text: 'Continue', icon: Icons.arrow_forward_rounded, onPressed: _nextStep),
+
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton(
+              onPressed: _nextStep,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Continue', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward_rounded, size: 20),
+                ],
+              ),
+            ),
+          ).animate().fadeIn(delay: 400.ms),
         ],
       ),
     );
@@ -239,140 +409,152 @@ class _RegisterScreenState extends State<RegisterScreen> with TickerProviderStat
     ];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         children: [
-          _GlassCard(
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 30,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 50,
-                      height: 50,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)]),
-                        borderRadius: BorderRadius.circular(14),
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.folder_rounded, color: Colors.white, size: 26),
+                      child: const Icon(Icons.folder_rounded, color: AppColors.primary, size: 24),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Upload Documents', style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
-                          Text('For verification', style: GoogleFonts.poppins(fontSize: 13, color: Colors.white.withValues(alpha: 0.6))),
+                          Text(
+                            'Documents',
+                            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w700, color: const Color(0xFF1A1A1A)),
+                          ),
+                          Text(
+                            'Upload for verification',
+                            style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF757575)),
+                          ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 ...docs.asMap().entries.map((e) => Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: _DocumentUploadTile(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _DocTile(
                         title: e.value['title'] as String,
                         icon: e.value['icon'] as IconData,
-                        required: e.value['required'] as bool,
+                        isRequired: e.value['required'] as bool,
                         color: e.value['color'] as Color,
-                      ).animate(delay: (100 * e.key).ms).fadeIn().slideX(begin: 0.1, end: 0),
+                      ).animate(delay: (100 * e.key).ms).fadeIn().slideX(begin: 0.05, end: 0),
                     )),
               ],
             ),
-          ).animate().fadeIn(duration: 500.ms).slideX(begin: 0.1, end: 0),
-          const SizedBox(height: 24),
-          // Onboarding fee notice
+          )
+              .animate()
+              .fadeIn(delay: 200.ms, duration: 500.ms)
+              .slideY(begin: 0.1, end: 0, delay: 200.ms, duration: 500.ms),
+
+          const SizedBox(height: 16),
+
+          // Fee notice
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF57C00).withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color: const Color(0xFFF57C00).withValues(alpha: 0.4)),
+              color: const Color(0xFFFFF3E0),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFFFCC80)),
             ),
             child: Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 38,
+                  height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF57C00).withValues(alpha: 0.2),
+                    color: const Color(0xFFFF9800).withOpacity(0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.info_outline_rounded,
-                      color: Color(0xFFFFB74D), size: 22),
+                  child: const Icon(Icons.info_outline_rounded, color: Color(0xFFE65100), size: 20),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'One-time Onboarding Fee',
-                        style: GoogleFonts.poppins(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFFFFB74D)),
+                        style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFFE65100)),
                       ),
                       Text(
                         'R150 — payable after verification',
-                        style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.75)),
+                        style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF795548)),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-          ).animate().fadeIn(delay: 200.ms),
+          ).animate().fadeIn(delay: 300.ms),
+
           const SizedBox(height: 24),
-          _PremiumButton(
-            text: 'Submit Registration',
-            icon: Icons.check_circle_rounded,
-            onPressed: () => _submit(),
-          ),
+
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton(
+              onPressed: _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Submit Registration', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.check_circle_rounded, size: 20),
+                ],
+              ),
+            ),
+          ).animate().fadeIn(delay: 400.ms),
+
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
-
-  void _submit() async {
-    // Navigate to OTP screen with all registration data
-    Navigator.pushNamed(
-      context,
-      '/otp',
-      arguments: {
-        'phone': _phoneController.text.trim(),
-        'purpose': 'registration',
-        'fullName': _nameController.text.trim(),
-        'shopName': _shopNameController.text.trim(),
-        'address': _addressController.text.trim(),
-        'idNumber': _idController.text.trim(),
-      },
-    );
-  }
-
 }
 
-class _GlowCircle extends StatelessWidget {
-  final double size;
-  final Color color;
-  const _GlowCircle({required this.size, required this.color});
-
-  @override
-  Widget build(BuildContext context) => Container(width: size, height: size, decoration: BoxDecoration(shape: BoxShape.circle, color: color));
-}
-
-class _AnimatedProgressBar extends StatelessWidget {
+// ── Step Indicator ──
+class _StepIndicator extends StatelessWidget {
   final int currentStep;
-  const _AnimatedProgressBar({required this.currentStep});
+  const _StepIndicator({required this.currentStep});
 
   @override
   Widget build(BuildContext context) {
-    final steps = ['Owner', 'Shop', 'Documents']; // ignore: unused_local_variable
+    final labels = ['Owner', 'Shop', 'Docs'];
     return Row(
       children: List.generate(3, (i) {
         final isActive = i <= currentStep;
@@ -382,39 +564,53 @@ class _AnimatedProgressBar extends StatelessWidget {
             children: [
               if (i > 0)
                 Expanded(
-                  child: AnimatedContainer(
-                    duration: 400.ms,
+                  child: Container(
                     height: 3,
                     decoration: BoxDecoration(
-                      color: isActive ? const Color(0xFF4CAF50) : Colors.white.withValues(alpha: 0.15),
+                      color: isActive ? const Color(0xFF4CAF50) : Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                 ),
-              AnimatedContainer(
-                duration: 400.ms,
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  gradient: isActive ? const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)]) : null,
-                  color: isActive ? null : Colors.white.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: isActive ? Colors.transparent : Colors.white.withValues(alpha: 0.2), width: 2),
-                  boxShadow: isActive ? [BoxShadow(color: const Color(0xFF4CAF50).withValues(alpha: 0.4), blurRadius: 12)] : null,
-                ),
-                child: Center(
-                  child: isCompleted
-                      ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
-                      : Text('${i + 1}', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14)),
-                ),
+              Column(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: isActive ? const Color(0xFF4CAF50) : Colors.white.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isActive ? Colors.transparent : Colors.white.withOpacity(0.3),
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: isCompleted
+                          ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
+                          : Text(
+                              '${i + 1}',
+                              style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    labels[i],
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                      color: isActive ? Colors.white : Colors.white.withOpacity(0.5),
+                    ),
+                  ),
+                ],
               ),
               if (i < 2)
                 Expanded(
-                  child: AnimatedContainer(
-                    duration: 400.ms,
+                  child: Container(
                     height: 3,
                     decoration: BoxDecoration(
-                      color: i < currentStep ? const Color(0xFF4CAF50) : Colors.white.withValues(alpha: 0.15),
+                      color: i < currentStep ? const Color(0xFF4CAF50) : Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -427,70 +623,58 @@ class _AnimatedProgressBar extends StatelessWidget {
   }
 }
 
-class _GlassCard extends StatelessWidget {
-  final Widget child;
-  const _GlassCard({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 8))],
-      ),
-      child: child,
-    );
-  }
-}
-
-class _GlassTextField extends StatelessWidget {
+// ── Form Field (white card, dark readable text) ──
+class _FormField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final String hint;
   final IconData icon;
   final TextInputType? keyboardType;
-  final String? prefix;
 
-  const _GlassTextField({required this.controller, required this.label, required this.hint, required this.icon, this.keyboardType, this.prefix});
+  const _FormField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.icon,
+    this.keyboardType,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white.withValues(alpha: 0.8))),
+        Text(
+          label,
+          style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF424242)),
+        ),
         const SizedBox(height: 8),
         Container(
+          height: 54,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: const Color(0xFFF5F5F5),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            border: Border.all(color: const Color(0xFFE0E0E0)),
           ),
           child: TextField(
             controller: controller,
             keyboardType: keyboardType,
-            style: GoogleFonts.poppins(color: Colors.white, fontSize: 15),
+            style: GoogleFonts.poppins(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF1A1A1A),
+            ),
+            cursorColor: AppColors.primary,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.poppins(color: Colors.white.withValues(alpha: 0.35)),
+              hintStyle: GoogleFonts.poppins(color: const Color(0xFFBDBDBD), fontSize: 14),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              prefixIcon: prefix != null
-                  ? Padding(
-                      padding: const EdgeInsets.only(left: 14, right: 10),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(prefix!, style: GoogleFonts.poppins(color: Colors.white, fontSize: 14)),
-                          const SizedBox(width: 10),
-                          Container(width: 1, height: 24, color: Colors.white.withValues(alpha: 0.2)),
-                        ],
-                      ),
-                    )
-                  : Padding(padding: const EdgeInsets.only(left: 14), child: Icon(icon, color: Colors.white.withValues(alpha: 0.5), size: 22)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+              prefixIcon: Padding(
+                padding: const EdgeInsets.only(left: 12, right: 8),
+                child: Icon(icon, color: const Color(0xFF9E9E9E), size: 22),
+              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
             ),
           ),
         ),
@@ -499,134 +683,136 @@ class _GlassTextField extends StatelessWidget {
   }
 }
 
-class _LocationCapture extends StatelessWidget {
+// ── Phone Field with country code ──
+class _PhoneField extends StatelessWidget {
+  final TextEditingController controller;
+  const _PhoneField({required this.controller});
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [const Color(0xFF4CAF50).withValues(alpha: 0.15), const Color(0xFF2E7D32).withValues(alpha: 0.1)]),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)]),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.my_location_rounded, color: Colors.white, size: 22),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Phone Number',
+          style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF424242)),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 54,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF5F5F5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE0E0E0)),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('GPS Location', style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
-                Text('Tap to capture location', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white.withValues(alpha: 0.6))),
-              ],
-            ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  children: [
+                    const Text('🇿🇦', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 6),
+                    Text(
+                      '+27',
+                      style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A1A)),
+                    ),
+                  ],
+                ),
+              ),
+              Container(width: 1, height: 28, color: const Color(0xFFE0E0E0)),
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.phone,
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF1A1A1A),
+                  ),
+                  cursorColor: AppColors.primary,
+                  decoration: InputDecoration(
+                    hintText: '81 234 5678',
+                    hintStyle: GoogleFonts.poppins(color: const Color(0xFFBDBDBD), fontSize: 14),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+                  ),
+                ),
+              ),
+            ],
           ),
-          Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.5)),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _DocumentUploadTile extends StatelessWidget {
+// ── Document Upload Tile ──
+class _DocTile extends StatelessWidget {
   final String title;
   final IconData icon;
-  final bool required;
+  final bool isRequired;
   final Color color;
 
-  const _DocumentUploadTile({required this.title, required this.icon, required this.required, required this.color});
+  const _DocTile({
+    required this.title,
+    required this.icon,
+    required this.isRequired,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Row(
         children: [
           Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: color, size: 24),
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 22),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Text(title, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                    if (required) Text(' *', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFFFF5252))),
+                    Text(
+                      title,
+                      style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1A1A1A)),
+                    ),
+                    if (isRequired)
+                      Text(' *', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.error)),
                   ],
                 ),
-                Text('Tap to upload', style: GoogleFonts.poppins(fontSize: 11, color: Colors.white.withValues(alpha: 0.5))),
+                Text(
+                  'Tap to upload',
+                  style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF757575)),
+                ),
               ],
             ),
           ),
           Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-            child: Icon(Icons.cloud_upload_outlined, color: color, size: 20),
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(Icons.cloud_upload_outlined, color: color, size: 18),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PremiumButton extends StatefulWidget {
-  final String text;
-  final IconData icon;
-  final VoidCallback onPressed;
-  const _PremiumButton({required this.text, required this.icon, required this.onPressed});
-
-  @override
-  State<_PremiumButton> createState() => _PremiumButtonState();
-}
-
-class _PremiumButtonState extends State<_PremiumButton> {
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
-      onTap: widget.onPressed,
-      child: AnimatedContainer(
-        duration: 150.ms,
-        width: double.infinity,
-        height: 56,
-        transform: Matrix4.diagonal3Values(_isPressed ? 0.97 : 1.0, _isPressed ? 0.97 : 1.0, 1.0),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)]),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: const Color(0xFF4CAF50).withValues(alpha: _isPressed ? 0.2 : 0.4), blurRadius: _isPressed ? 10 : 20, offset: const Offset(0, 8))],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(widget.text, style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-            const SizedBox(width: 10),
-            Icon(widget.icon, color: Colors.white, size: 22),
-          ],
-        ),
       ),
     );
   }

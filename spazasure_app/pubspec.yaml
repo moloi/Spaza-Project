@@ -27,6 +27,7 @@ dependencies:
   flutter_animate: ^4.5.2
   http: ^1.2.2
   shared_preferences: ^2.3.3
+  file_picker: ^8.1.6
 
 dev_dependencies:
   flutter_test:

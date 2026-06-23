@@ -4,13 +4,12 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Auto-detect the correct host based on platform
+  // QA server URL — all API calls go to the deployed backend
+  static const _qaUrl = 'http://167.233.69.205/api';
+
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:5181/api';
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:5181/api'; // Android emulator → host localhost
-    }
-    return 'http://localhost:5181/api'; // Windows, iOS, macOS, Linux
+    // Always use the QA server for now
+    return _qaUrl;
   }
 
   static Future<String?> _getToken() async {
@@ -73,6 +72,41 @@ class ApiService {
     if (res.statusCode >= 200 && res.statusCode < 300) return body;
     final msg = body['message'] ?? body['error'] ?? 'Something went wrong';
     throw ApiException(msg.toString(), res.statusCode);
+  }
+
+  /// Upload a file using multipart form data
+  static Future<Map<String, dynamic>> uploadFile(
+    String path, {
+    required String fieldName,
+    required List<int> fileBytes,
+    required String fileName,
+    Map<String, String>? fields,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl$path');
+      final request = http.MultipartRequest('POST', uri);
+
+      // Add auth header
+      final token = await _getToken();
+      if (token != null) request.headers['Authorization'] = 'Bearer $token';
+
+      // Add file
+      request.files.add(http.MultipartFile.fromBytes(
+        fieldName,
+        fileBytes,
+        filename: fileName,
+      ));
+
+      // Add extra fields
+      if (fields != null) request.fields.addAll(fields);
+
+      final streamed = await request.send().timeout(const Duration(seconds: 30));
+      final res = await http.Response.fromStream(streamed);
+      return _handle(res);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException('Upload failed: $e', 0);
+    }
   }
 }
 

@@ -1,217 +1,186 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:spazasure_app/core/constants/app_colors.dart';
 import 'package:spazasure_app/core/constants/app_text_styles.dart';
-import 'package:spazasure_app/core/widgets/status_badge.dart';
-import 'package:spazasure_app/services/mock_data.dart';
+import 'package:spazasure_app/services/compliance_service.dart';
 
-class ComplianceScreen extends StatelessWidget {
+class ComplianceScreen extends StatefulWidget {
   const ComplianceScreen({super.key});
 
-  static const _docMeta = {
+  @override
+  State<ComplianceScreen> createState() => _ComplianceScreenState();
+}
+
+class _ComplianceScreenState extends State<ComplianceScreen> {
+  static const _requiredDocs = {
     'business_permit': _DocMeta('Business Permit', Icons.description_outlined, 'Local Municipality', 'https://www.cogta.gov.za', true),
     'health_cert': _DocMeta('Health Certificate', Icons.health_and_safety_outlined, 'Dept. of Health', 'https://www.health.gov.za', true),
     'lease': _DocMeta('Lease Agreement', Icons.home_work_outlined, 'Download Template', 'https://www.justice.gov.za', false),
     'id_document': _DocMeta('ID Document', Icons.badge_outlined, 'Dept. of Home Affairs', 'https://www.dha.gov.za', true),
   };
 
+  List<ComplianceDoc> _docs = [];
+  bool _loading = true;
+  bool _uploading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDocs();
+  }
+
+  Future<void> _loadDocs() async {
+    setState(() => _loading = true);
+    try {
+      final docs = await ComplianceService.getDocuments();
+      if (mounted) setState(() { _docs = docs; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  String _getDocStatus(String docType) {
+    final doc = _docs.where((d) => d.docType == docType).firstOrNull;
+    return doc?.status ?? 'missing';
+  }
+
+  ComplianceDoc? _getDoc(String docType) {
+    return _docs.where((d) => d.docType == docType).firstOrNull;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final docs = MockData.complianceDocs;
-    final approvedCount = docs.where((d) => d.status == 'approved').length;
-    final progress = approvedCount / docs.length;
+    final approvedCount = _requiredDocs.keys.where((k) => _getDocStatus(k) == 'approved').length;
+    final progress = _requiredDocs.isEmpty ? 0.0 : approvedCount / _requiredDocs.length;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Compliance'), backgroundColor: AppColors.surface),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Progress card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [Color(0xFF0D3B0F), Color(0xFF1B5E20)], begin: Alignment.topLeft, end: Alignment.bottomRight),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 8))],
-              ),
-              child: Row(
-                children: [
-                  CircularPercentIndicator(
-                    radius: 48,
-                    lineWidth: 8,
-                    percent: progress,
-                    center: Text('${(progress * 100).round()}%', style: AppTextStyles.h3.copyWith(color: Colors.white)),
-                    progressColor: const Color(0xFF4CAF50),
-                    backgroundColor: Colors.white24,
-                    circularStrokeCap: CircularStrokeCap.round,
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Compliance Status', style: AppTextStyles.body.copyWith(color: Colors.white70)),
-                        const SizedBox(height: 4),
-                        Text('$approvedCount of ${docs.length} verified', style: AppTextStyles.subtitle.copyWith(color: Colors.white)),
-                        const SizedBox(height: 8),
-                        if (progress < 1)
-                          Text('Complete all docs to get your\n🟢 Verified Badge', style: AppTextStyles.caption.copyWith(color: Colors.white60)),
-                        if (progress >= 1)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
-                            child: Text('✅ Fully Verified', style: AppTextStyles.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn().slideY(begin: 0.1, end: 0),
-
-            const SizedBox(height: 16),
-
-            // Scan Product QR button
-            GestureDetector(
-              onTap: () => Navigator.pushNamed(context, '/qr-scanner'),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.info.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.qr_code_scanner_rounded,
-                          color: Colors.white, size: 26),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Scan Product QR',
-                              style: AppTextStyles.subtitle
-                                  .copyWith(color: Colors.white)),
-                          Text('Verify product authenticity instantly',
-                              style: AppTextStyles.caption
-                                  .copyWith(color: Colors.white70)),
-                        ],
-                      ),
-                    ),
-                    const Icon(Icons.arrow_forward_ios_rounded,
-                        color: Colors.white70, size: 16),
-                  ],
-                ),
-              ),
-            ).animate().fadeIn(delay: 50.ms).slideY(begin: 0.1, end: 0),
-
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Document Status Guide', style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      _legendDot(const Color(0xFF4CAF50)), const SizedBox(width: 6), Expanded(child: Text('Verified & complete', style: AppTextStyles.caption)),
-                      _legendDot(AppColors.warning), const SizedBox(width: 6), Expanded(child: Text('Incomplete — guidance available', style: AppTextStyles.caption)),
-                      _legendDot(AppColors.error), const SizedBox(width: 6), Expanded(child: Text('Not registered', style: AppTextStyles.caption)),
-                    ],
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 100.ms),
-
-            const SizedBox(height: 16),
-
-            // Expiry alert
-            if (docs.any((d) => d.expiryDate != null && d.expiryDate!.difference(DateTime.now()).inDays < 30))
-              Container(
-                padding: const EdgeInsets.all(14),
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Document Expiring Soon', style: AppTextStyles.subtitle.copyWith(color: AppColors.warning)),
-                          Text('Your business permit expires in 14 days. Renew now.', style: AppTextStyles.bodySmall),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ).animate().fadeIn(delay: 150.ms),
-
-            Text('Your Documents', style: AppTextStyles.h3),
-            const SizedBox(height: 12),
-
-            ...docs.asMap().entries.map((e) =>
-              _buildDocCard(context, e.value).animate(delay: (80 * e.key).ms).fadeIn().slideX(begin: 0.05, end: 0),
-            ),
-          ],
-        ),
+      appBar: AppBar(
+        title: const Text('Compliance'),
+        backgroundColor: AppColors.surface,
+        actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadDocs),
+        ],
       ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _loadDocs,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    // Progress card
+                    _buildProgressCard(progress, approvedCount),
+                    const SizedBox(height: 16),
+
+                    // Upload indicator
+                    if (_uploading)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.info.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                            const SizedBox(width: 12),
+                            Text('Uploading document...', style: AppTextStyles.body.copyWith(color: AppColors.info)),
+                          ],
+                        ),
+                      ),
+
+                    // Document cards
+                    ..._requiredDocs.entries.map((entry) {
+                      final docType = entry.key;
+                      final meta = entry.value;
+                      final doc = _getDoc(docType);
+                      return _buildDocCard(context, docType, meta, doc);
+                    }),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 
-  Widget _legendDot(Color color) => Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle));
+  Widget _buildProgressCard(double progress, int approvedCount) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12)],
+      ),
+      child: Row(
+        children: [
+          CircularPercentIndicator(
+            radius: 40,
+            lineWidth: 8,
+            percent: progress,
+            center: Text('${(progress * 100).toInt()}%', style: AppTextStyles.h3.copyWith(color: AppColors.primary)),
+            progressColor: AppColors.primary,
+            backgroundColor: AppColors.divider,
+            circularStrokeCap: CircularStrokeCap.round,
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Compliance Progress', style: AppTextStyles.subtitle),
+                const SizedBox(height: 4),
+                Text(
+                  '$approvedCount of ${_requiredDocs.length} documents approved',
+                  style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 6),
+                if (progress == 1.0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(color: AppColors.success.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                    child: Text('✓ Fully Compliant', style: AppTextStyles.caption.copyWith(color: AppColors.success, fontWeight: FontWeight.w700)),
+                  )
+                else
+                  Text('Upload missing documents to get verified', style: AppTextStyles.caption.copyWith(color: AppColors.warning)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms);
+  }
 
-  Widget _buildDocCard(BuildContext context, dynamic doc) {
-    final meta = _docMeta[doc.docType];
-    if (meta == null) return const SizedBox.shrink();
+  Widget _buildDocCard(BuildContext context, String docType, _DocMeta meta, ComplianceDoc? doc) {
+    final status = doc?.status ?? 'missing';
+    final isApproved = status == 'approved';
+    final isPending = status == 'pending';
+    final isRejected = status == 'rejected';
 
-    final isExpiringSoon = doc.expiryDate != null && doc.expiryDate!.difference(DateTime.now()).inDays < 30;
-    final isApproved = doc.status == 'approved';
-    final isPending = doc.status == 'pending';
-    final isRejected = doc.status == 'rejected';
-
-    // Traffic light color
-    Color trafficColor;
-    String trafficLabel;
-    if (isApproved && !isExpiringSoon) {
-      trafficColor = const Color(0xFF4CAF50);
-      trafficLabel = '🟢';
-    } else if (isPending || isExpiringSoon) {
-      trafficColor = AppColors.warning;
-      trafficLabel = '🟠';
+    Color statusColor;
+    String statusLabel;
+    IconData statusIcon;
+    if (isApproved) {
+      statusColor = AppColors.success;
+      statusLabel = 'Approved';
+      statusIcon = Icons.check_circle;
+    } else if (isPending) {
+      statusColor = AppColors.warning;
+      statusLabel = 'Under Review';
+      statusIcon = Icons.hourglass_top;
+    } else if (isRejected) {
+      statusColor = AppColors.error;
+      statusLabel = 'Rejected';
+      statusIcon = Icons.cancel;
     } else {
-      trafficColor = AppColors.error;
-      trafficLabel = '🔴';
+      statusColor = const Color(0xFF9E9E9E);
+      statusLabel = 'Not Uploaded';
+      statusIcon = Icons.cloud_upload_outlined;
     }
 
     return Container(
@@ -219,8 +188,8 @@ class ComplianceScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: trafficColor.withValues(alpha: 0.3)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
+        border: Border.all(color: statusColor.withOpacity(0.3)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
       ),
       child: Column(
         children: [
@@ -230,8 +199,8 @@ class ComplianceScreen extends StatelessWidget {
               children: [
                 Container(
                   width: 48, height: 48,
-                  decoration: BoxDecoration(color: trafficColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-                  child: Icon(meta.icon, color: trafficColor),
+                  decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: Icon(meta.icon, color: statusColor),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -240,59 +209,60 @@ class ComplianceScreen extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          Text(trafficLabel, style: const TextStyle(fontSize: 14)),
-                          const SizedBox(width: 6),
                           Expanded(child: Text(meta.title, style: AppTextStyles.subtitle)),
                           if (meta.required)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: AppColors.error.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                              child: Text('Required', style: AppTextStyles.caption.copyWith(color: AppColors.error, fontWeight: FontWeight.w600)),
+                              decoration: BoxDecoration(color: AppColors.error.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                              child: Text('Required', style: AppTextStyles.caption.copyWith(color: AppColors.error, fontWeight: FontWeight.w600, fontSize: 10)),
                             ),
                         ],
                       ),
-                      const SizedBox(height: 2),
-                      if (doc.expiryDate != null)
-                        Text(
-                          isExpiringSoon
-                              ? '⚠️ Expires in ${doc.expiryDate!.difference(DateTime.now()).inDays} days'
-                              : 'Expires: ${doc.expiryDate!.day}/${doc.expiryDate!.month}/${doc.expiryDate!.year}',
-                          style: AppTextStyles.caption.copyWith(color: isExpiringSoon ? AppColors.warning : AppColors.textHint),
-                        )
-                      else if (isPending)
-                        Text('Under review by admin', style: AppTextStyles.caption.copyWith(color: AppColors.warning))
-                      else if (isRejected)
-                        Text(doc.rejectionReason ?? 'Document rejected — please re-upload', style: AppTextStyles.caption.copyWith(color: AppColors.error)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(statusIcon, size: 14, color: statusColor),
+                          const SizedBox(width: 4),
+                          Text(statusLabel, style: AppTextStyles.caption.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      if (isRejected && doc?.rejectionNote != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(doc!.rejectionNote!, style: AppTextStyles.caption.copyWith(color: AppColors.error)),
+                        ),
                     ],
                   ),
                 ),
-                StatusBadge(status: doc.status),
               ],
             ),
           ),
-          // How-to link for incomplete/pending docs
-          if (!isApproved || isExpiringSoon)
+          // Action buttons
+          if (!isApproved)
             Container(
               decoration: BoxDecoration(
-                color: trafficColor.withValues(alpha: 0.05),
+                color: statusColor.withOpacity(0.05),
                 borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-                border: Border(top: BorderSide(color: trafficColor.withValues(alpha: 0.15))),
+                border: Border(top: BorderSide(color: statusColor.withOpacity(0.15))),
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: TextButton.icon(
                       onPressed: () => _showHowTo(context, meta),
-                      icon: Icon(Icons.help_outline_rounded, size: 16, color: trafficColor),
-                      label: Text('How to get this document', style: AppTextStyles.caption.copyWith(color: trafficColor, fontWeight: FontWeight.w600)),
+                      icon: Icon(Icons.help_outline_rounded, size: 16, color: statusColor),
+                      label: Text('How to get', style: AppTextStyles.caption.copyWith(color: statusColor, fontWeight: FontWeight.w600)),
                     ),
                   ),
-                  Container(width: 1, height: 32, color: trafficColor.withValues(alpha: 0.15)),
+                  Container(width: 1, height: 32, color: statusColor.withOpacity(0.15)),
                   Expanded(
                     child: TextButton.icon(
-                      onPressed: () => _showUpload(context, meta.title),
-                      icon: Icon(Icons.cloud_upload_outlined, size: 16, color: trafficColor),
-                      label: Text('Upload Document', style: AppTextStyles.caption.copyWith(color: trafficColor, fontWeight: FontWeight.w600)),
+                      onPressed: _uploading ? null : () => _pickAndUpload(docType, meta.title),
+                      icon: Icon(Icons.cloud_upload_outlined, size: 16, color: statusColor),
+                      label: Text(
+                        isPending ? 'Re-upload' : 'Upload',
+                        style: AppTextStyles.caption.copyWith(color: statusColor, fontWeight: FontWeight.w600),
+                      ),
                     ),
                   ),
                 ],
@@ -300,7 +270,73 @@ class ComplianceScreen extends StatelessWidget {
             ),
         ],
       ),
+    ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05, end: 0);
+  }
+
+  Future<void> _pickAndUpload(String docType, String docTitle) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp'],
+      withData: true,
     );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    if (file.bytes == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('Could not read file data'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('File too large. Max 10MB.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+      return;
+    }
+
+    setState(() => _uploading = true);
+
+    try {
+      await ComplianceService.uploadDocument(
+        docType: docType,
+        fileBytes: file.bytes!,
+        fileName: file.name,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('$docTitle uploaded successfully'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+        _loadDocs(); // Refresh the list
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Upload failed: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _uploading = false);
+    }
   }
 
   void _showHowTo(BuildContext context, _DocMeta meta) {
@@ -320,7 +356,7 @@ class ComplianceScreen extends StatelessWidget {
               children: [
                 Container(
                   width: 44, height: 44,
-                  decoration: BoxDecoration(color: AppColors.info.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(color: AppColors.info.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
                   child: Icon(meta.icon, color: AppColors.info),
                 ),
                 const SizedBox(width: 12),
@@ -336,7 +372,11 @@ class ComplianceScreen extends StatelessWidget {
             const SizedBox(height: 20),
             Container(
               padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: AppColors.info.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.info.withValues(alpha: 0.2))),
+              decoration: BoxDecoration(
+                color: AppColors.info.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.info.withOpacity(0.2)),
+              ),
               child: Row(
                 children: [
                   const Icon(Icons.link_rounded, color: AppColors.info, size: 20),
@@ -350,7 +390,6 @@ class ComplianceScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Icon(Icons.open_in_new_rounded, color: AppColors.info, size: 18),
                 ],
               ),
             ),
@@ -359,6 +398,7 @@ class ComplianceScreen extends StatelessWidget {
               width: double.infinity, height: 52,
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                 child: const Text('Got it'),
               ),
             ),
@@ -376,75 +416,12 @@ class ComplianceScreen extends StatelessWidget {
         children: [
           Container(
             width: 24, height: 24,
-            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
             child: Center(child: Text(num, style: AppTextStyles.caption.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700))),
           ),
           const SizedBox(width: 10),
           Expanded(child: Text(text, style: AppTextStyles.body)),
         ],
-      ),
-    );
-  }
-
-  void _showUpload(BuildContext context, String docTitle) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppColors.divider, borderRadius: BorderRadius.circular(2)))),
-            const SizedBox(height: 20),
-            Text('Upload $docTitle', style: AppTextStyles.h3),
-            const SizedBox(height: 20),
-            _uploadOption(context, Icons.camera_alt_outlined, 'Take a Photo', 'Use your camera'),
-            const SizedBox(height: 10),
-            _uploadOption(context, Icons.folder_outlined, 'Choose from Files', 'PDF, JPG, PNG'),
-            const SizedBox(height: 20),
-            Text('Max file size: 5MB • Accepted: PDF, JPG, PNG', style: AppTextStyles.caption),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _uploadOption(BuildContext context, IconData icon, String title, String subtitle) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: const Text('Document uploaded for review'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ));
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.divider)),
-        child: Row(
-          children: [
-            Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-              child: Icon(icon, color: AppColors.primary),
-            ),
-            const SizedBox(width: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: AppTextStyles.subtitle),
-                Text(subtitle, style: AppTextStyles.caption),
-              ],
-            ),
-            const Spacer(),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.textHint),
-          ],
-        ),
       ),
     );
   }

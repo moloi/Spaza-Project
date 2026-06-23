@@ -32,12 +32,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     setState(() => _isLoading = true);
     try {
-      await context.read<AuthProvider>().sendLoginOtp(phone);
+      final otp = await context.read<AuthProvider>().sendLoginOtp(phone);
       if (!mounted) return;
       Navigator.pushNamed(
         context,
         '/otp',
-        arguments: {'phone': phone, 'purpose': 'login'},
+        arguments: {
+          'phone': phone,
+          'purpose': 'login',
+          if (otp != null) 'otp': otp,
+        },
       );
     } catch (e) {
       if (!mounted) return;

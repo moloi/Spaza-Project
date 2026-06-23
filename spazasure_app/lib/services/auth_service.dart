@@ -5,6 +5,7 @@ class AuthSession {
   final String userId;
   final String shopName;
   final String phone;
+  final String fullName;
   final String token;
   final String refreshToken;
 
@@ -12,6 +13,7 @@ class AuthSession {
     required this.userId,
     required this.shopName,
     required this.phone,
+    this.fullName = '',
     required this.token,
     required this.refreshToken,
   });
@@ -23,22 +25,30 @@ class AuthService {
   static const _userIdKey = 'user_id';
   static const _shopNameKey = 'shop_name';
   static const _phoneKey = 'phone';
+  static const _fullNameKey = 'full_name';
 
   // ── DEV TEST OTP ───────────────────────────────────────────────────────
   // When backend is unavailable, use OTP "123456" to log in with a demo account.
   static const _devOtp = '123456';
 
   // ── Step 1: Request OTP ───────────────────────────────────────────────────
-  static Future<void> sendOtp(String phone, {String purpose = 'login'}) async {
+  static Future<String?> sendOtp(String phone, {String purpose = 'login'}) async {
     final formatted = _formatPhone(phone);
     try {
-      await ApiService.post(
+      final res = await ApiService.post(
         '/shop/auth/send-otp?purpose=$purpose',
         {'phone': formatted},
         auth: false,
       );
+      // In QA/dev, backend returns the OTP for auto-fill
+      final data = res['data'];
+      if (data is Map<String, dynamic> && data.containsKey('otp')) {
+        return data['otp'] as String;
+      }
+      return null;
     } catch (_) {
       // Backend unavailable — allow dev OTP "123456"
+      return _devOtp;
     }
   }
 
@@ -55,9 +65,16 @@ class AuthService {
     } catch (_) {
       // Fallback: accept dev OTP when backend is down
       if (otp == _devOtp) {
+        // Try to load previously saved session data (from registration)
+        final prefs = await SharedPreferences.getInstance();
+        final savedShopName = prefs.getString(_shopNameKey) ?? 'My Spaza Shop';
+        final savedFullName = prefs.getString(_fullNameKey) ?? '';
+        final savedUserId = prefs.getString(_userIdKey) ?? 'dev-001';
+
         return _parseAndSave({
-          'userId': 'demo-001',
-          'shopName': "Thabo's Spaza Shop",
+          'userId': savedUserId,
+          'shopName': savedShopName,
+          'fullName': savedFullName,
           'phone': formatted,
           'accessToken': 'dev-token-${DateTime.now().millisecondsSinceEpoch}',
           'refreshToken': 'dev-refresh-token',
@@ -95,8 +112,9 @@ class AuthService {
       // Fallback: accept dev OTP when backend is down
       if (otp == _devOtp) {
         return _parseAndSave({
-          'userId': 'demo-001',
+          'userId': 'dev-${DateTime.now().millisecondsSinceEpoch}',
           'shopName': shopName,
+          'fullName': fullName,
           'phone': formatted,
           'accessToken': 'dev-token-${DateTime.now().millisecondsSinceEpoch}',
           'refreshToken': 'dev-refresh-token',
@@ -115,6 +133,7 @@ class AuthService {
       userId: prefs.getString(_userIdKey) ?? '',
       shopName: prefs.getString(_shopNameKey) ?? '',
       phone: prefs.getString(_phoneKey) ?? '',
+      fullName: prefs.getString(_fullNameKey) ?? '',
       token: token,
       refreshToken: prefs.getString(_refreshKey) ?? '',
     );
@@ -147,6 +166,7 @@ class AuthService {
       userId: data['userId'].toString(),
       shopName: data['shopName'] ?? '',
       phone: data['phone'] ?? '',
+      fullName: data['fullName'] ?? '',
       token: data['accessToken'],
       refreshToken: data['refreshToken'],
     );
@@ -156,6 +176,9 @@ class AuthService {
     await prefs.setString(_userIdKey, session.userId);
     await prefs.setString(_shopNameKey, session.shopName);
     await prefs.setString(_phoneKey, session.phone);
+    await prefs.setString(_fullNameKey, session.fullName);
+    // Debug: print what was saved
+    print('[AUTH] Session saved - shopName: "${session.shopName}", fullName: "${session.fullName}", phone: "${session.phone}"');
     return session;
   }
 }

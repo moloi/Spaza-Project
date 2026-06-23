@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:spazasure_app/core/constants/app_colors.dart';
 import 'package:spazasure_app/core/constants/app_text_styles.dart';
 import 'package:spazasure_app/core/widgets/product_card.dart';
+import 'package:spazasure_app/providers/auth_provider.dart';
 import 'package:spazasure_app/providers/cart_provider.dart';
 import 'package:spazasure_app/services/product_service.dart';
 import 'package:spazasure_app/services/mock_data.dart';
@@ -35,19 +36,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ProductService.getProducts(pageSize: 10),
         ProductService.getCategories(),
       ]);
+      var products = results[0] as List<Product>;
+      var categories = results[1] as List<Category>;
+
+      // Use mock data if API returns empty (no products added by suppliers yet)
+      if (products.isEmpty) products = MockData.products;
+      if (categories.isEmpty) categories = MockData.categories;
+
       setState(() {
-        _products = results[0] as List<Product>;
-        _categories = results[1] as List<Category>;
+        _products = products;
+        _categories = categories;
       });
     } catch (e) {
-      // If API fails, try loading categories separately (they may be cached)
-      setState(() => _products = []);
-      try {
-        final cats = await ProductService.getCategories();
-        setState(() => _categories = cats);
-      } catch (_) {
-        setState(() => _categories = MockData.categories);
-      }
+      // If API fails, use mock data so the app is usable
+      setState(() {
+        _products = MockData.products;
+        _categories = MockData.categories;
+      });
     } finally {
       setState(() => _loadingProducts = false);
     }
@@ -108,6 +113,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   // ─── PIECE 1: HEADER ────────────────────────────────────────────────────────
   Widget _buildHeader() {
+    final auth = context.watch<AuthProvider>();
+    final shopName = auth.session?.shopName ?? 'My Spaza Shop';
+    final initials = shopName.isNotEmpty
+        ? shopName.split(' ').where((w) => w.isNotEmpty).take(2).map((w) => w[0].toUpperCase()).join()
+        : 'SP';
+
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       decoration: const BoxDecoration(
@@ -127,7 +138,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               borderRadius: BorderRadius.circular(16),
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
             ),
-            child: const Center(child: Text('TS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16))),
+            child: Center(child: Text(initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16))),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -135,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_getGreeting(), style: const TextStyle(color: Colors.white60, fontSize: 12, fontWeight: FontWeight.w400)),
-                const Text("Thabo's Spaza Shop", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+                Text(shopName, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                 Row(
                   children: [
                     Container(
@@ -143,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       decoration: const BoxDecoration(color: Color(0xFF69F0AE), shape: BoxShape.circle),
                     ),
                     const SizedBox(width: 4),
-                    const Text('Verified Business', style: TextStyle(color: Color(0xFF69F0AE), fontSize: 11, fontWeight: FontWeight.w500)),
+                    const Text('Active', style: TextStyle(color: Color(0xFF69F0AE), fontSize: 11, fontWeight: FontWeight.w500)),
                   ],
                 ),
               ],

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:spazasure_app/models/models.dart';
 import 'package:spazasure_app/core/constants/app_colors.dart';
@@ -14,6 +15,56 @@ class ProductCard extends StatelessWidget {
     this.onTap,
     this.onAddToCart,
   });
+
+  Widget _buildProductImage() {
+    final url = product.imageUrl;
+    if (url.isEmpty) {
+      return Center(
+        child: Icon(
+          Icons.inventory_2_outlined,
+          size: 48,
+          color: AppColors.primary.withValues(alpha: 0.3),
+        ),
+      );
+    }
+    // Handle base64 data URIs
+    if (url.startsWith('data:image')) {
+      try {
+        final dataIndex = url.indexOf(',');
+        if (dataIndex == -1) return _imagePlaceholder();
+        final base64Str = url.substring(dataIndex + 1);
+        final bytes = base64Decode(base64Str);
+        return SizedBox(
+          width: double.infinity,
+          height: 120,
+          child: Image.memory(bytes, fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _imagePlaceholder()),
+        );
+      } catch (_) {
+        return _imagePlaceholder();
+      }
+    }
+    // Handle HTTP/HTTPS URLs
+    if (url.startsWith('http')) {
+      return SizedBox(
+        width: double.infinity,
+        height: 120,
+        child: Image.network(url, fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _imagePlaceholder()),
+      );
+    }
+    return _imagePlaceholder();
+  }
+
+  Widget _imagePlaceholder() {
+    return Center(
+      child: Icon(
+        Icons.inventory_2_outlined,
+        size: 48,
+        color: AppColors.primary.withValues(alpha: 0.3),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +85,7 @@ class ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image placeholder
+            // Product Image
             Container(
               height: 120,
               decoration: BoxDecoration(
@@ -43,12 +94,10 @@ class ProductCard extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  Center(
-                    child: Icon(
-                      Icons.inventory_2_outlined,
-                      size: 48,
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                    ),
+                  // Show actual image or fallback to icon
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    child: _buildProductImage(),
                   ),
                   if (product.discountPrice != null)
                     Positioned(
