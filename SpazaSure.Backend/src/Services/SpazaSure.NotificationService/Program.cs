@@ -83,11 +83,11 @@ builder.Services.AddCors(opt =>
 
 var app = builder.Build();
 
-// Auto-migrate database
+// Auto-create database tables
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<NotificationDbContext>();
-    db.Database.Migrate();
+    db.Database.EnsureCreated();
 }
 
 app.UseCors("AllowPortal");
