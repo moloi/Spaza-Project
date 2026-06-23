@@ -88,6 +88,9 @@ public class ShopAuthService(SpazaSureDbContext db, IConfiguration config, ILogg
         };
         db.SpazaShops.Add(shop);
 
+        // Save user and shop first so FK constraint is satisfied
+        await db.SaveChangesAsync();
+
         db.AuthAuditLogs.Add(new AuthAuditLog
         {
             UserId = user.Id,

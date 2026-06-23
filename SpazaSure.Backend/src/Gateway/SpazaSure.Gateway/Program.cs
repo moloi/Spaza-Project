@@ -3,10 +3,9 @@
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddCors(opt => opt.AddPolicy("Portal", p =>
-    p.SetIsOriginAllowed(origin => new Uri(origin).Host == "localhost")
+    p.AllowAnyOrigin()
      .AllowAnyHeader()
-     .AllowAnyMethod()
-     .AllowCredentials()));
+     .AllowAnyMethod()));
 
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));

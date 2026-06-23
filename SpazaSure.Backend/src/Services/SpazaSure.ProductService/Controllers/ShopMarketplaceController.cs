@@ -20,7 +20,7 @@ public class ShopMarketplaceController(SpazaSureDbContext db) : ControllerBase
         var query = db.Products
             .Include(p => p.Category).Include(p => p.Supplier)
             .Where(p => p.IsAvailable && p.IsApproved && p.StockQty > 0)
-            .Where(p => p.Supplier.Status == "active");
+            .Where(p => p.Supplier.Status == "active" || p.Supplier.Status == "verified");
 
         if (!string.IsNullOrEmpty(search))
             query = query.Where(p => p.Name.Contains(search) || p.Supplier.CompanyName.Contains(search));
@@ -77,7 +77,7 @@ public class ShopMarketplaceController(SpazaSureDbContext db) : ControllerBase
     [HttpGet("suppliers")]
     public async Task<IActionResult> Suppliers()
     {
-        var items = await db.Suppliers.Where(s => s.Status == "active")
+        var items = await db.Suppliers.Where(s => s.Status == "active" || s.Status == "verified")
             .OrderBy(s => s.CompanyName)
             .Select(s => new { s.Id, s.CompanyName, s.Tier, s.LogoUrl, s.City, s.Province,
                 ProductCount = s.Products.Count(p => p.IsAvailable && p.IsApproved) })

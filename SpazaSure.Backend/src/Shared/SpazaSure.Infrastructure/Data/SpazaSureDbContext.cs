@@ -101,6 +101,8 @@ public class SpazaSureDbContext(DbContextOptions<SpazaSureDbContext> options) : 
             e.HasOne(s => s.User).WithOne(u => u.SpazaShop)
              .HasForeignKey<SpazaShop>(s => s.UserId);
             e.Property(s => s.RatingAvg).HasPrecision(3, 2);
+            e.Ignore(s => s.Latitude);
+            e.Ignore(s => s.Longitude);
         });
 
         // ShopDocument
