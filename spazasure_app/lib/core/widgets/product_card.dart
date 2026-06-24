@@ -121,6 +121,31 @@ class ProductCard extends StatelessWidget {
                     right: 8,
                     child: _SupplierTierBadge(supplierName: product.supplierName),
                   ),
+                  // Nearby badge
+                  if (product.isNearby)
+                    Positioned(
+                      bottom: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 4)],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.near_me, size: 10, color: Colors.white),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Nearby',
+                              style: AppTextStyles.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   if (!product.isAvailable)
                     Container(
                       decoration: BoxDecoration(
@@ -154,6 +179,21 @@ class ProductCard extends StatelessWidget {
                     style: AppTextStyles.caption,
                     maxLines: 1,
                   ),
+                  if (product.supplierCity != null && product.supplierCity!.isNotEmpty)
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, size: 10, color: product.isNearby ? AppColors.primary : AppColors.textHint),
+                        const SizedBox(width: 2),
+                        Text(
+                          product.supplierCity!,
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: 10,
+                            color: product.isNearby ? AppColors.primary : AppColors.textHint,
+                            fontWeight: product.isNearby ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 4),
                   Row(
                     children: [

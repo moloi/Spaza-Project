@@ -120,6 +120,8 @@ class ProductService {
       rating: (i['rating'] as num?)?.toDouble() ?? 4.0,
       reviewCount: i['reviewCount'] ?? 0,
       isAvailable: i['isAvailable'] ?? true,
+      isNearby: i['isNearby'] ?? false,
+      supplierCity: i['supplierCity'] as String?,
     );
   }
 

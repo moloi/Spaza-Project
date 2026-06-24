@@ -47,6 +47,8 @@ class Product {
   final int reviewCount;
   final String qrCode;
   final bool isAvailable;
+  final bool isNearby;
+  final String? supplierCity;
 
   const Product({
     required this.id,
@@ -67,6 +69,8 @@ class Product {
     this.reviewCount = 0,
     this.qrCode = '',
     this.isAvailable = true,
+    this.isNearby = false,
+    this.supplierCity,
   });
 }
 
