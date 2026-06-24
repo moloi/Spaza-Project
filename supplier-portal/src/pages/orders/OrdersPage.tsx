@@ -48,6 +48,8 @@ function mapOrder(o: any): Order {
   };
 }
 
+const REQUIRED_DOCS_LIST = ['cipc_certificate', 'tax_clearance', 'bee_certificate', 'product_license'];
+
 export default function OrdersPage() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -60,9 +62,6 @@ export default function OrdersPage() {
 
   // Compliance
   const [isCompliant, setIsCompliant] = useState(true);
-  const [missingDocs, setMissingDocs] = useState<string[]>([]);
-
-  const REQUIRED_DOCS = ['cipc_certificate', 'tax_clearance', 'bee_certificate', 'product_license'];
 
   useEffect(() => {
     Promise.allSettled([
@@ -76,11 +75,10 @@ export default function OrdersPage() {
       if (profileRes.status === 'fulfilled') {
         const profile = profileRes.value as any;
         const docs: any[] = profile?.documents ?? [];
-        const missing = REQUIRED_DOCS.filter(dt => {
+        const missing = REQUIRED_DOCS_LIST.filter(dt => {
           const doc = docs.find((d: any) => d.docType === dt);
           return !doc || doc.status === 'rejected';
         });
-        setMissingDocs(missing);
         setIsCompliant(missing.length === 0);
       }
     }).finally(() => setLoading(false));
