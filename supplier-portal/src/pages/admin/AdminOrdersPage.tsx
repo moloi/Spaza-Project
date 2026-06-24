@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Eye, CheckCircle, XCircle, Truck, ShoppingCart, Clock, DollarSign, Loader2 } from 'lucide-react';
+import { Search, Eye, CheckCircle, XCircle, Truck, ShoppingCart, Clock, DollarSign, Loader2, Receipt } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import clsx from 'clsx';
@@ -7,6 +7,7 @@ import { adminOrdersApi } from '../../services/api';
 import type { Order, OrderStatus } from '../../types';
 import { OrderStatusBadge, PaymentStatusBadge } from '../../components/ui';
 import OrderDetailModal from '../orders/OrderDetailModal';
+import OrderReceiptModal from '../orders/OrderReceiptModal';
 
 const statusTabs = [
   { value: 'all',        label: 'All Orders' },
@@ -23,6 +24,7 @@ export default function AdminOrdersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selected, setSelected] = useState<Order | null>(null);
+  const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
   const [summary, setSummary] = useState<any>({});
 
   const loadOrders = useCallback(async () => {
@@ -67,7 +69,7 @@ export default function AdminOrdersPage() {
       productId: i.productId, productName: i.productName ?? i.name ?? '', productImage: '', quantity: i.quantity, price: i.unitPrice,
     })), subtotal: o.subtotal ?? 0, deliveryFee: o.deliveryFee ?? 0, platformFee: o.platformCommission ?? 0,
     total: o.totalAmount ?? 0, status: o.status, deliveryOption: o.deliveryType ?? 'standard',
-    paymentMethod: 'eft', paymentStatus: 'held', createdAt: o.createdAt,
+    paymentMethod: o.paymentMethod ?? 'eft', paymentStatus: o.paymentStatus ?? 'pending', createdAt: o.createdAt,
     estimatedDelivery: o.estimatedDelivery,
   });
 
@@ -181,6 +183,9 @@ export default function AdminOrdersPage() {
                       <button onClick={() => setSelected(mapToOrder(order))} className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-all" title="View">
                         <Eye size={14} />
                       </button>
+                      <button onClick={() => setReceiptOrder(mapToOrder(order))} className="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-all" title="View Receipt">
+                        <Receipt size={14} />
+                      </button>
                       {order.status === 'pending' && (
                         <>
                           <button onClick={() => updateStatus(order.id, 'processing')} className="p-2 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all" title="Accept">
@@ -211,6 +216,7 @@ export default function AdminOrdersPage() {
       </div>
 
       {selected && <OrderDetailModal order={selected} onClose={() => setSelected(null)} onUpdateStatus={updateStatus} />}
+      {receiptOrder && <OrderReceiptModal order={receiptOrder} onClose={() => setReceiptOrder(null)} />}
     </div>
   );
 }

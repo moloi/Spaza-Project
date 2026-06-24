@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Search, Eye, CheckCircle, XCircle, Truck, ShoppingCart, Clock, Package, DollarSign, Printer } from 'lucide-react';
+import { Search, Eye, CheckCircle, XCircle, Truck, ShoppingCart, Clock, Package, DollarSign, Printer, ShieldAlert, FileText, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
-import { ordersApi } from '../../services/api';
+import { ordersApi, profileApi } from '../../services/api';
 import type { Order, OrderStatus } from '../../types';
 import { OrderStatusBadge, PaymentStatusBadge, EmptyState } from '../../components/ui';
 import PageLoader from '../../components/ui/PageLoader';
@@ -10,6 +10,7 @@ import clsx from 'clsx';
 import OrderDetailModal from './OrderDetailModal';
 import OrderReceiptModal from './OrderReceiptModal';
 import { useOrderStore } from '../../store/orderStore';
+import { useNavigate } from 'react-router-dom';
 
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: 'all',        label: 'All Orders'  },
@@ -48,6 +49,7 @@ function mapOrder(o: any): Order {
 }
 
 export default function OrdersPage() {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -56,14 +58,32 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const { fetchPendingCount } = useOrderStore();
 
+  // Compliance
+  const [isCompliant, setIsCompliant] = useState(true);
+  const [missingDocs, setMissingDocs] = useState<string[]>([]);
+
+  const REQUIRED_DOCS = ['cipc_certificate', 'tax_clearance', 'bee_certificate', 'product_license'];
+
   useEffect(() => {
-    ordersApi.list({ pageSize: 100 })
-      .then((res: any) => {
-        const raw = res?.data?.items ?? res?.items ?? [];
+    Promise.allSettled([
+      ordersApi.list({ pageSize: 100 }),
+      profileApi.get(),
+    ]).then(([ordersRes, profileRes]) => {
+      if (ordersRes.status === 'fulfilled') {
+        const raw = (ordersRes.value as any)?.data?.items ?? (ordersRes.value as any)?.items ?? [];
         setOrders(raw.map(mapOrder));
-      })
-      .catch(() => toast.error('Failed to load orders.'))
-      .finally(() => setLoading(false));
+      }
+      if (profileRes.status === 'fulfilled') {
+        const profile = profileRes.value as any;
+        const docs: any[] = profile?.documents ?? [];
+        const missing = REQUIRED_DOCS.filter(dt => {
+          const doc = docs.find((d: any) => d.docType === dt);
+          return !doc || doc.status === 'rejected';
+        });
+        setMissingDocs(missing);
+        setIsCompliant(missing.length === 0);
+      }
+    }).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <PageLoader variant="table" />;
@@ -94,6 +114,22 @@ export default function OrdersPage() {
 
   return (
     <div className="p-6 space-y-5 animate-in">
+      {/* Compliance Warning */}
+      {!isCompliant && (
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 p-5 flex items-center gap-4">
+          <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
+            <ShieldAlert size={22} className="text-red-600" />
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-red-900 text-sm">Account Restricted — Missing Compliance Documents</p>
+            <p className="text-xs text-red-700 mt-1">You cannot process orders until all required documents are submitted and approved.</p>
+          </div>
+          <button onClick={() => navigate('/profile')} className="flex items-center gap-1.5 text-xs font-bold text-red-700 bg-white border border-red-200 px-4 py-2 rounded-xl hover:bg-red-50 transition-all flex-shrink-0">
+            <FileText size={14} /> Upload Documents <ArrowRight size={12} />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
