@@ -21,7 +21,10 @@ class OrderDetailScreen extends StatelessWidget {
         title: Text(order.orderNumber),
         backgroundColor: AppColors.surface,
         actions: [
-          IconButton(icon: const Icon(Icons.help_outline), onPressed: () {}),
+          IconButton(
+            icon: const Icon(Icons.receipt_long_outlined),
+            onPressed: () => Navigator.pushNamed(context, '/receipt', arguments: order),
+          ),
         ],
       ),
       body: SingleChildScrollView(

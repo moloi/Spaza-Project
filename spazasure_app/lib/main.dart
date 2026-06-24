@@ -22,6 +22,7 @@ import 'features/wallet/screens/wallet_screen.dart';
 import 'features/group_buy/screens/group_buy_screen.dart';
 import 'features/marketplace/screens/qr_scanner_screen.dart';
 import 'features/orders/screens/rate_delivery_screen.dart';
+import 'features/orders/screens/receipt_screen.dart';
 import 'core/widgets/logo_page_route.dart';
 
 void main() {
@@ -72,6 +73,7 @@ class SpazaSureApp extends StatelessWidget {
           '/qr-scanner':        () => const QrScannerScreen(),
           '/report':            () => const ReportScreen(),
           '/rate-delivery':     () => const RateDeliveryScreen(),
+          '/receipt':           () => const ReceiptScreen(),
         };
         final builder = pages[settings.name];
         if (builder == null) return null;

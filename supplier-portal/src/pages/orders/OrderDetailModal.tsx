@@ -1,7 +1,9 @@
-import { CheckCircle, XCircle, Truck, MapPin, CreditCard, Package } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle, XCircle, Truck, MapPin, CreditCard, Package, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Order, OrderStatus } from '../../types';
 import { OrderStatusBadge, PaymentStatusBadge, Modal } from '../../components/ui';
+import OrderReceiptModal from './OrderReceiptModal';
 
 interface Props {
   order: Order;
@@ -20,6 +22,7 @@ const orderSteps: { status: OrderStatus; label: string }[] = [
 const statusOrder = ['pending', 'confirmed', 'processing', 'dispatched', 'delivered'];
 
 export default function OrderDetailModal({ order, onClose, onUpdateStatus }: Props) {
+  const [showReceipt, setShowReceipt] = useState(false);
   const currentStep = statusOrder.indexOf(order.status);
 
   return (
@@ -163,7 +166,19 @@ export default function OrderDetailModal({ order, onClose, onUpdateStatus }: Pro
             <Truck size={16} /> Mark as Dispatched
           </button>
         )}
+
+        {/* View Receipt Button */}
+        <button
+          onClick={() => setShowReceipt(true)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
+        >
+          <Printer size={16} /> View Receipt
+        </button>
       </div>
+
+      {showReceipt && (
+        <OrderReceiptModal order={order} onClose={() => setShowReceipt(false)} />
+      )}
     </Modal>
   );
 }

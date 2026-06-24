@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Eye, CheckCircle, XCircle, Truck, ShoppingCart, Clock, Package, DollarSign } from 'lucide-react';
+import { Search, Eye, CheckCircle, XCircle, Truck, ShoppingCart, Clock, Package, DollarSign, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { ordersApi } from '../../services/api';
@@ -8,6 +8,7 @@ import { OrderStatusBadge, PaymentStatusBadge, EmptyState } from '../../componen
 import PageLoader from '../../components/ui/PageLoader';
 import clsx from 'clsx';
 import OrderDetailModal from './OrderDetailModal';
+import OrderReceiptModal from './OrderReceiptModal';
 import { useOrderStore } from '../../store/orderStore';
 
 const STATUS_TABS: { value: string; label: string }[] = [
@@ -51,6 +52,7 @@ export default function OrdersPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selected, setSelected] = useState<Order | null>(null);
+  const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const { fetchPendingCount } = useOrderStore();
 
@@ -245,6 +247,9 @@ export default function OrdersPage() {
                       <button onClick={() => setSelected(order)} className="btn-icon hover:text-primary hover:bg-primary-50" title="View Details">
                         <Eye size={14} />
                       </button>
+                      <button onClick={() => setReceiptOrder(order)} className="btn-icon hover:text-emerald-600 hover:bg-emerald-50" title="View Receipt">
+                        <Printer size={14} />
+                      </button>
                       {order.status === 'pending' && (
                         <>
                           <button onClick={() => updateStatus(order.id, 'processing')} className="btn-icon hover:text-emerald-600 hover:bg-emerald-50" title="Accept Order">
@@ -271,6 +276,10 @@ export default function OrdersPage() {
 
       {selected && (
         <OrderDetailModal order={selected} onClose={() => setSelected(null)} onUpdateStatus={updateStatus} />
+      )}
+
+      {receiptOrder && (
+        <OrderReceiptModal order={receiptOrder} onClose={() => setReceiptOrder(null)} />
       )}
     </div>
   );
