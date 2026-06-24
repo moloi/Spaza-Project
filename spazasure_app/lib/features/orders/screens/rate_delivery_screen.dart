@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:spazasure_app/core/constants/app_colors.dart';
 import 'package:spazasure_app/core/constants/app_text_styles.dart';
 import 'package:spazasure_app/models/models.dart';
+import 'package:spazasure_app/services/api_service.dart';
 
 class RateDeliveryScreen extends StatefulWidget {
   const RateDeliveryScreen({super.key});
@@ -49,6 +50,20 @@ class _RateDeliveryScreenState extends State<RateDeliveryScreen>
       );
       return;
     }
+
+    final order = ModalRoute.of(context)?.settings.arguments as Order?;
+    if (order == null) return;
+
+    try {
+      await ApiService.post('/shop/orders/${order.id}/rate', {
+        'deliveryRating': _deliveryRating,
+        'supplierRating': _supplierRating,
+        'comment': _commentController.text.trim(),
+      });
+    } catch (_) {
+      // Still show success even if API fails — rating is non-critical
+    }
+
     setState(() => _submitted = true);
     _successController.forward();
     await Future.delayed(const Duration(seconds: 3));

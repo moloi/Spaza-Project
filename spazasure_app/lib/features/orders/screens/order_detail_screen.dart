@@ -7,6 +7,7 @@ import 'package:spazasure_app/core/widgets/status_badge.dart';
 import 'package:spazasure_app/core/widgets/custom_button.dart';
 import 'package:spazasure_app/models/models.dart';
 import 'package:spazasure_app/services/order_service.dart';
+import 'package:spazasure_app/services/api_service.dart';
 
 class OrderDetailScreen extends StatelessWidget {
   const OrderDetailScreen({super.key});
@@ -311,7 +312,10 @@ class OrderDetailScreen extends StatelessWidget {
         content: Text('Have you received all items in good condition?', style: AppTextStyles.body),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _showReportIssue(context, order);
+            },
             child: Text('Report Issue', style: AppTextStyles.body.copyWith(color: AppColors.error)),
           ),
           ElevatedButton(
@@ -339,6 +343,88 @@ class OrderDetailScreen extends StatelessWidget {
             child: const Text('Confirm'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showReportIssue(BuildContext context, Order order) {
+    final issueTypes = ['Damaged Items', 'Missing Items', 'Wrong Items', 'Late Delivery', 'Other'];
+    String selectedType = issueTypes[0];
+    final descController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.report_problem_outlined, color: AppColors.error, size: 24),
+              const SizedBox(width: 8),
+              Text('Report Issue', style: AppTextStyles.h3),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('What went wrong?', style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              ...issueTypes.map((type) => RadioListTile<String>(
+                title: Text(type, style: AppTextStyles.bodySmall),
+                value: type,
+                groupValue: selectedType,
+                onChanged: (v) => setDialogState(() => selectedType = v!),
+                dense: true,
+                activeColor: AppColors.primary,
+              )),
+              const SizedBox(height: 12),
+              TextField(
+                controller: descController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Describe the issue...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  contentPadding: const EdgeInsets.all(12),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  await ApiService.post('/shop/orders/${order.id}/report-issue', {
+                    'issueType': selectedType,
+                    'description': descController.text.trim().isNotEmpty
+                        ? descController.text.trim()
+                        : selectedType,
+                  });
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Issue reported. We will investigate and contact you.'),
+                      backgroundColor: AppColors.info,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } catch (e) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed: $e'), backgroundColor: AppColors.error),
+                  );
+                }
+              },
+              child: const Text('Submit Report', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }
