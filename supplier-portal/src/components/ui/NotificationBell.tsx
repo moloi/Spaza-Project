@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, ShoppingCart, AlertTriangle, Package, X, CheckCheck, ArrowRight } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,31 +32,30 @@ export default function NotificationBell({ variant = 'supplier' }: { variant?: '
   const ref = useRef<HTMLDivElement>(null);
 
   // Load notifications from API
-  const loadNotifications = useCallback(async () => {
-    try {
-      const data = await notificationsApi.list({ page: 1, pageSize: 10 });
-      const items = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
-      setNotifications(items.map((n: any) => ({
-        id: n.id,
-        type: n.type ?? 'system',
-        title: n.title ?? '',
-        message: n.message ?? '',
-        createdAt: n.createdAt ?? new Date().toISOString(),
-        read: n.isRead ?? false,
-        priority: n.priority ?? 'normal',
-      })));
-    } catch {
-      // Silently fail
-    }
-  }, []);
-
-  useEffect(() => { loadNotifications(); }, [loadNotifications]);
-
-  // Poll for new notifications every 30 seconds
   useEffect(() => {
-    const interval = setInterval(loadNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [loadNotifications]);
+    let mounted = true;
+    const load = async () => {
+      try {
+        const data = await notificationsApi.list({ page: 1, pageSize: 10 });
+        if (!mounted) return;
+        const items = Array.isArray(data) ? data : data?.items ?? data?.data ?? [];
+        setNotifications(items.map((n: any) => ({
+          id: n.id ?? String(Math.random()),
+          type: n.type ?? 'system',
+          title: n.title ?? '',
+          message: n.message ?? '',
+          createdAt: n.createdAt ?? new Date().toISOString(),
+          read: n.isRead ?? n.read ?? false,
+          priority: n.priority ?? 'normal',
+        })));
+      } catch {
+        // Silently fail — notifications are non-critical
+      }
+    };
+    load();
+    const interval = setInterval(load, 30000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, []);
 
   const unread = notifications.filter((n) => !n.read);
   const unreadCount = unread.length;
@@ -198,7 +197,7 @@ export default function NotificationBell({ variant = 'supplier' }: { variant?: '
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5 leading-relaxed line-clamp-2">{n.message}</p>
                       <p className="text-[11px] text-gray-400 mt-1 font-medium">
-                        {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                        {(() => { try { return formatDistanceToNow(new Date(n.createdAt), { addSuffix: true }); } catch { return 'recently'; } })()}
                       </p>
                     </div>
 
