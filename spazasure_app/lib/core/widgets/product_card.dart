@@ -159,85 +159,86 @@ class ProductCard extends StatelessWidget {
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    style: AppTextStyles.bodySmall.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      product.name,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    product.supplierName,
-                    style: AppTextStyles.caption,
-                    maxLines: 1,
-                  ),
-                  if (product.supplierCity != null && product.supplierCity!.isNotEmpty)
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, size: 10, color: product.isNearby ? AppColors.primary : AppColors.textHint),
-                        const SizedBox(width: 2),
-                        Text(
-                          product.supplierCity!,
-                          style: AppTextStyles.caption.copyWith(
-                            fontSize: 10,
-                            color: product.isNearby ? AppColors.primary : AppColors.textHint,
-                            fontWeight: product.isNearby ? FontWeight.w600 : FontWeight.w400,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 2),
+                    Text(
+                      product.supplierName,
+                      style: AppTextStyles.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, size: 14, color: AppColors.warning),
-                      const SizedBox(width: 2),
-                      Text('${product.rating}', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
-                      Text(' (${product.reviewCount})', style: AppTextStyles.caption),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    if (product.supplierCity != null && product.supplierCity!.isNotEmpty)
+                      Row(
                         children: [
-                          if (product.discountPrice != null) ...[
-                            Text(
-                              'R${product.price.toStringAsFixed(2)}',
+                          Icon(Icons.location_on, size: 10, color: product.isNearby ? AppColors.primary : AppColors.textHint),
+                          const SizedBox(width: 2),
+                          Expanded(
+                            child: Text(
+                              product.supplierCity!,
                               style: AppTextStyles.caption.copyWith(
-                                decoration: TextDecoration.lineThrough,
-                                color: AppColors.textHint,
+                                fontSize: 10,
+                                color: product.isNearby ? AppColors.primary : AppColors.textHint,
+                                fontWeight: product.isNearby ? FontWeight.w600 : FontWeight.w400,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            Text('R${product.discountPrice!.toStringAsFixed(2)}', style: AppTextStyles.priceSmall),
-                          ] else
-                            Text('R${product.price.toStringAsFixed(2)}', style: AppTextStyles.priceSmall),
+                          ),
                         ],
                       ),
-                      if (product.isAvailable)
-                        GestureDetector(
-                          onTap: onAddToCart,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.add, color: Colors.white, size: 18),
+                    const Spacer(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (product.discountPrice != null) ...[
+                                Text(
+                                  'R${product.price.toStringAsFixed(2)}',
+                                  style: AppTextStyles.caption.copyWith(
+                                    decoration: TextDecoration.lineThrough,
+                                    color: AppColors.textHint,
+                                  ),
+                                ),
+                                Text('R${product.discountPrice!.toStringAsFixed(2)}', style: AppTextStyles.priceSmall),
+                              ] else
+                                Text('R${product.price.toStringAsFixed(2)}', style: AppTextStyles.priceSmall),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
-                ],
+                        if (product.isAvailable)
+                          GestureDetector(
+                            onTap: onAddToCart,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.add, color: Colors.white, size: 18),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

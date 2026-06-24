@@ -116,4 +116,30 @@ public class ShopMarketplaceController(SpazaSureDbContext db) : ControllerBase
             .ToListAsync();
         return Ok(ApiResponse<object>.Ok(items));
     }
+
+    /// <summary>Lookup a product by barcode or SKU for scanning verification.</summary>
+    [HttpGet("scan/{code}")]
+    public async Task<IActionResult> ScanProduct(string code)
+    {
+        var p = await db.Products.Include(x => x.Category).Include(x => x.Supplier)
+            .FirstOrDefaultAsync(x => (x.Barcode != null && x.Barcode == code) || x.Sku == code);
+
+        if (p is null)
+            return NotFound(ApiResponse.Fail("Product not found. The barcode or SKU is not registered in our system."));
+
+        return Ok(ApiResponse<object>.Ok(new {
+            p.Id, p.Name, p.Description, p.Sku, p.Barcode, p.Price, p.MinOrderQty,
+            p.StockQty, p.Unit, p.Images, p.IsAvailable, p.IsApproved,
+            CategoryName = p.Category?.Name,
+            SupplierId = p.SupplierId,
+            SupplierName = p.Supplier.CompanyName,
+            SupplierTier = p.Supplier.Tier,
+            SupplierCity = p.Supplier.City,
+            SupplierProvince = p.Supplier.Province,
+            SupplierStatus = p.Supplier.Status,
+            SupplierVerified = p.Supplier.Status == "verified" || p.Supplier.Status == "active",
+            ProductApproved = p.IsApproved,
+            IsVerified = p.IsApproved && (p.Supplier.Status == "verified" || p.Supplier.Status == "active"),
+        }));
+    }
 }

@@ -46,7 +46,6 @@ class _DeliveryTrackingScreenState extends State<DeliveryTrackingScreen> {
                     points: [_supplierPosition, _driverPosition, _shopPosition],
                     color: AppColors.primary,
                     strokeWidth: 4,
-                    isDotted: true,
                   ),
                 ],
               ),

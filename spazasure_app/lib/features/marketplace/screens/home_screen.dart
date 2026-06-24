@@ -326,11 +326,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Row(
         children: [
-          Expanded(child: _KpiCard(value: '$_orderCount', label: 'Active Orders', color: AppColors.info, icon: Icons.receipt_long_rounded, trend: _orderCount > 0 ? 'In progress' : 'No orders')),
+          Expanded(child: _KpiCard(value: '$_orderCount', label: 'Active Orders', color: AppColors.info, icon: Icons.receipt_long_rounded, trend: _orderCount > 0 ? 'In progress' : 'No orders', onTap: () => Navigator.pushNamed(context, '/orders'))),
           const SizedBox(width: 10),
-          Expanded(child: _KpiCard(value: _complianceStatus, label: 'Compliance', color: AppColors.warning, icon: Icons.verified_user_rounded, trend: _complianceStatus == '100%' ? 'Complete' : 'Upload docs')),
+          Expanded(child: _KpiCard(value: _complianceStatus, label: 'Compliance', color: AppColors.warning, icon: Icons.verified_user_rounded, trend: _complianceStatus == '100%' ? 'Complete' : 'Upload docs', onTap: () => Navigator.pushNamed(context, '/compliance'))),
           const SizedBox(width: 10),
-          Expanded(child: _KpiCard(value: _rating, label: 'Rating', color: AppColors.success, icon: Icons.star_rounded, trend: _rating == 'New' ? 'No ratings yet' : 'Good')),
+          Expanded(child: _KpiCard(value: _rating, label: 'Rating', color: AppColors.success, icon: Icons.star_rounded, trend: _rating == 'New' ? 'No ratings yet' : 'Good', onTap: () => Navigator.pushNamed(context, '/orders'))),
         ],
       ),
     ).animate().fadeIn(delay: 200.ms);
@@ -450,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       {'icon': Icons.groups_rounded, 'label': 'Group Buy', 'color': AppColors.accent, 'route': '/group-buy', 'badge': null},
       {'icon': Icons.qr_code_scanner_rounded, 'label': 'Scan QR', 'color': AppColors.info, 'route': '/qr-scanner', 'badge': null},
       {'icon': Icons.description_outlined, 'label': 'Compliance', 'color': AppColors.warning, 'route': '/compliance', 'badge': '1'},
-      {'icon': Icons.local_shipping_outlined, 'label': 'Track Order', 'color': AppColors.secondary, 'route': '/home', 'badge': null},
+      {'icon': Icons.local_shipping_outlined, 'label': 'Track Order', 'color': AppColors.secondary, 'route': '/orders', 'badge': null},
     ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
@@ -622,33 +622,37 @@ class _KpiCard extends StatelessWidget {
   final String value, label, trend;
   final Color color;
   final IconData icon;
+  final VoidCallback? onTap;
 
-  const _KpiCard({required this.value, required this.label, required this.color, required this.icon, required this.trend});
+  const _KpiCard({required this.value, required this.label, required this.color, required this.icon, required this.trend, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(height: 10),
-          Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 2),
-          Text(label, style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w500)),
-          const SizedBox(height: 4),
-          Text(trend, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.w600)),
-        ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [BoxShadow(color: color.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(height: 10),
+            Text(value, style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 2),
+            Text(label, style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w500)),
+            const SizedBox(height: 4),
+            Text(trend, style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }

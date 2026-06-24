@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:spazasure_app/core/constants/app_colors.dart';
@@ -15,10 +16,41 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   int _quantity = 1;
+  int _currentImageIndex = 0;
+
+  Widget _buildProductImage(String url) {
+    if (url.isEmpty) return _imagePlaceholder();
+    // Handle base64 data URIs
+    if (url.startsWith('data:image')) {
+      try {
+        final dataIndex = url.indexOf(',');
+        if (dataIndex == -1) return _imagePlaceholder();
+        final base64Str = url.substring(dataIndex + 1);
+        final bytes = base64Decode(base64Str);
+        return Image.memory(bytes, fit: BoxFit.cover, width: double.infinity, height: double.infinity,
+          errorBuilder: (_, __, ___) => _imagePlaceholder());
+      } catch (_) {
+        return _imagePlaceholder();
+      }
+    }
+    // Handle HTTP/HTTPS URLs
+    if (url.startsWith('http')) {
+      return Image.network(url, fit: BoxFit.cover, width: double.infinity, height: double.infinity,
+        errorBuilder: (_, __, ___) => _imagePlaceholder());
+    }
+    return _imagePlaceholder();
+  }
+
+  Widget _imagePlaceholder() {
+    return Center(
+      child: Icon(Icons.inventory_2_outlined, size: 100, color: AppColors.primary.withValues(alpha: 0.3)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final product = ModalRoute.of(context)!.settings.arguments as Product;
+    if (_quantity < product.minOrderQty) _quantity = product.minOrderQty;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -32,9 +64,41 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 color: AppColors.primary.withValues(alpha: 0.08),
-                child: Center(
-                  child: Icon(Icons.inventory_2_outlined, size: 100, color: AppColors.primary.withValues(alpha: 0.3)),
-                ),
+                child: product.images.isNotEmpty
+                    ? Stack(
+                        children: [
+                          PageView.builder(
+                            itemCount: product.images.length,
+                            onPageChanged: (i) => setState(() => _currentImageIndex = i),
+                            itemBuilder: (ctx, i) => _buildProductImage(product.images[i]),
+                          ),
+                          // Image indicators
+                          if (product.images.length > 1)
+                            Positioned(
+                              bottom: 12,
+                              left: 0,
+                              right: 0,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(
+                                  product.images.length,
+                                  (i) => Container(
+                                    width: _currentImageIndex == i ? 20 : 8,
+                                    height: 8,
+                                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                                    decoration: BoxDecoration(
+                                      color: _currentImageIndex == i ? AppColors.primary : Colors.white54,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
+                    : (product.imageUrl.isNotEmpty
+                        ? _buildProductImage(product.imageUrl)
+                        : _imagePlaceholder()),
               ),
             ),
           ),

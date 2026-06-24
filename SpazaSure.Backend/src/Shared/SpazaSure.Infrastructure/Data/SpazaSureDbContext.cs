@@ -23,6 +23,8 @@ public class SpazaSureDbContext(DbContextOptions<SpazaSureDbContext> options) : 
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
     public DbSet<SupplierSubscription> SupplierSubscriptions => Set<SupplierSubscription>();
+    public DbSet<GroupBuy> GroupBuys => Set<GroupBuy>();
+    public DbSet<GroupBuyParticipant> GroupBuyParticipants => Set<GroupBuyParticipant>();
 
     protected override void OnModelCreating(ModelBuilder model)
     {
@@ -174,6 +176,25 @@ public class SpazaSureDbContext(DbContextOptions<SpazaSureDbContext> options) : 
             e.Property(s => s.AmountPaid).HasPrecision(10, 2);
             e.HasOne(s => s.Supplier).WithMany().HasForeignKey(s => s.SupplierId);
             e.HasOne(s => s.Plan).WithMany(p => p.Subscriptions).HasForeignKey(s => s.PlanId);
+        });
+
+        // GroupBuy
+        model.Entity<GroupBuy>(e =>
+        {
+            e.ToTable("group_buys");
+            e.Property(g => g.OriginalPrice).HasPrecision(10, 2);
+            e.Property(g => g.DiscountPrice).HasPrecision(10, 2);
+            e.HasOne(g => g.Product).WithMany().HasForeignKey(g => g.ProductId);
+            e.HasOne(g => g.Supplier).WithMany().HasForeignKey(g => g.SupplierId);
+            e.HasOne(g => g.CreatedByShop).WithMany().HasForeignKey(g => g.CreatedByShopId);
+        });
+
+        // GroupBuyParticipant
+        model.Entity<GroupBuyParticipant>(e =>
+        {
+            e.ToTable("group_buy_participants");
+            e.HasOne(p => p.GroupBuy).WithMany(g => g.Participants).HasForeignKey(p => p.GroupBuyId);
+            e.HasOne(p => p.Shop).WithMany().HasForeignKey(p => p.ShopId);
         });
 
         base.OnModelCreating(model);

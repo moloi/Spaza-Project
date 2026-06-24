@@ -18,6 +18,7 @@ import AnalyticsPage from './pages/analytics/AnalyticsPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import SubscriptionPage from './pages/subscription/SubscriptionPage';
+import GroupBuyPage from './pages/group-buy/GroupBuyPage';
 
 // Admin pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="orders" element={<OrdersPage />} />
+        <Route path="group-buy" element={<GroupBuyPage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="profile" element={<ProfilePage />} />

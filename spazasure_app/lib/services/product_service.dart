@@ -90,15 +90,16 @@ class ProductService {
         images = (i['images'] as List).map((e) => e.toString()).toList();
       } else if (i['images'] is String) {
         final raw = i['images'] as String;
-        if (raw.startsWith('[')) {
-          // Simple parse of JSON array
-          images = raw
-              .replaceAll('[', '')
-              .replaceAll(']', '')
-              .replaceAll('"', '')
-              .split(',')
-              .where((s) => s.trim().isNotEmpty)
-              .toList();
+        if (raw.startsWith('[') && raw.length > 2) {
+          // Proper JSON parse for base64 data URIs
+          try {
+            final decoded = (raw.substring(1, raw.length - 1))
+                .split('","')
+                .map((s) => s.replaceAll('"', ''))
+                .where((s) => s.trim().isNotEmpty)
+                .toList();
+            images = decoded;
+          } catch (_) {}
         }
       }
     }

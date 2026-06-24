@@ -2,7 +2,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, BarChart2, User,
   LogOut, CheckCircle, ChevronLeft, ChevronRight,
-  AlertTriangle, Crown,
+  AlertTriangle, Crown, Users,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useEffect } from 'react';
@@ -15,6 +15,7 @@ const baseNavItems = [
   { to: '/dashboard',     icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/products',      icon: Package,          label: 'Products' },
   { to: '/orders',        icon: ShoppingCart,     label: 'Orders' },
+  { to: '/group-buy',     icon: Users,            label: 'Group Buy' },
   { to: '/analytics',     icon: BarChart2,        label: 'Analytics' },
   { to: '/subscription',  icon: Crown,            label: 'Upgrade',  highlight: true },
   { to: '/profile',       icon: User,             label: 'Profile' },
