@@ -6,6 +6,7 @@ import 'package:spazasure_app/core/widgets/custom_button.dart';
 import 'package:spazasure_app/providers/cart_provider.dart';
 import 'package:spazasure_app/services/order_service.dart';
 import 'package:spazasure_app/services/auth_service.dart';
+import 'package:spazasure_app/services/profile_service.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -284,11 +285,18 @@ class _CartScreenState extends State<CartScreen> {
     setState(() => _placing = true);
     try {
       final session = await AuthService.getSession();
+      // Use the shop's registered address for delivery
+      String deliveryAddress = session?.shopName ?? 'My Shop';
+      try {
+        final profile = await ProfileService.getProfile();
+        deliveryAddress = profile.address.isNotEmpty ? profile.address : deliveryAddress;
+      } catch (_) {}
+
       final orderNumber = await OrderService.placeOrder(
         items: cart.items.toList(),
         deliveryOption: _deliveryOption,
         paymentMethod: _paymentMethod,
-        deliveryAddress: session?.shopName ?? '',
+        deliveryAddress: deliveryAddress,
       );
       cart.clear();
       if (!mounted) return;
