@@ -13,6 +13,7 @@ import 'features/main_shell.dart';
 import 'features/marketplace/screens/marketplace_screen.dart';
 import 'features/marketplace/screens/product_detail_screen.dart';
 import 'features/cart/screens/cart_screen.dart';
+import 'features/orders/screens/orders_screen.dart';
 import 'features/orders/screens/order_detail_screen.dart';
 import 'features/delivery/screens/delivery_tracking_screen.dart';
 import 'features/compliance/screens/compliance_screen.dart';
@@ -64,6 +65,7 @@ class SpazaSureApp extends StatelessWidget {
           '/marketplace':       () => const MarketplaceScreen(),
           '/product':           () => const ProductDetailScreen(),
           '/cart':              () => const CartScreen(),
+          '/orders':            () => const OrdersScreen(),
           '/order-detail':      () => const OrderDetailScreen(),
           '/delivery-tracking': () => const DeliveryTrackingScreen(),
           '/compliance':        () => const ComplianceScreen(),
