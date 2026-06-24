@@ -176,6 +176,11 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // Animated counters for hero stats (must be called before any conditional returns!)
+  const animRevenue = useAnimatedCounter(summary?.totalRevenue ?? 0, 2000, 500);
+  const animOrders = useAnimatedCounter(summary?.totalOrders ?? 0, 1500, 700);
+  const animProducts = useAnimatedCounter(summary?.activeProducts ?? 0, 1200, 900);
+
   if (loading) return <PageLoader variant="dashboard" />;
 
   const s = summary;
@@ -186,11 +191,6 @@ export default function DashboardPage() {
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-
-  // Animated counters for hero stats
-  const animRevenue = useAnimatedCounter(s?.totalRevenue ?? 0, 2000, 500);
-  const animOrders = useAnimatedCounter(s?.totalOrders ?? 0, 1500, 700);
-  const animProducts = useAnimatedCounter(s?.activeProducts ?? 0, 1200, 900);
 
   return (
     <div className="p-6 space-y-6 animate-in">
