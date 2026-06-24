@@ -114,7 +114,30 @@ export default function AdminSuppliersPage() {
       if (spazaFilter !== 'all') params.status = spazaFilter;
       const res = await adminSpazaOwnersApi.list(params);
       const data = res?.data ?? res;
-      setSpazaOwners(Array.isArray(data) ? data : data?.items ?? data?.owners ?? []);
+      const items = Array.isArray(data) ? data : data?.items ?? data?.owners ?? [];
+      // Map backend fields to frontend interface
+      setSpazaOwners(items.map((o: any) => ({
+        id: o.id,
+        shopName: o.shopName ?? '',
+        ownerName: o.ownerName ?? '',
+        email: o.email ?? '',
+        phone: o.phone ?? '',
+        location: [o.address, o.city, o.province].filter(Boolean).join(', ') || o.location || '',
+        isVerified: o.isVerified ?? o.status === 'verified',
+        joinedAt: o.joinedAt ?? o.createdAt ?? '',
+        totalOrders: o.totalOrders ?? 0,
+        totalSpent: o.totalSpent ?? 0,
+        documents: (o.documents ?? []).map((d: any) => ({
+          id: d.id,
+          docType: d.docType,
+          docUrl: d.docUrl,
+          status: d.status,
+          expiryDate: d.expiryDate,
+          rejectionReason: d.rejectionNote ?? d.rejectionReason,
+          uploadedAt: d.createdAt ?? d.uploadedAt ?? new Date().toISOString(),
+          createdAt: d.createdAt,
+        })),
+      })));
     } catch {
       toast.error('Failed to load spaza owners');
     } finally {
@@ -863,7 +886,7 @@ export default function AdminSuppliersPage() {
                     <Calendar size={15} className="text-gray-400" />
                     <div>
                       <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide">Joined</p>
-                      <p className="text-sm font-medium text-gray-900">{format(new Date(selectedSpaza.joinedAt), 'dd MMM yyyy')}</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedSpaza.joinedAt ? format(new Date(selectedSpaza.joinedAt), 'dd MMM yyyy') : 'N/A'}</p>
                     </div>
                   </div>
                 </div>
@@ -883,7 +906,7 @@ export default function AdminSuppliersPage() {
                 </div>
 
                 {/* Documents */}
-                {selectedSpaza.documents && selectedSpaza.documents.length > 0 && (
+                {selectedSpaza.documents && selectedSpaza.documents.length > 0 ? (
                   <div>
                     <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
                       <FileText size={14} className="text-gray-400" /> Documents
@@ -895,6 +918,11 @@ export default function AdminSuppliersPage() {
                           tax_clearance: 'Tax Clearance Certificate',
                           bee_certificate: 'BEE Certificate',
                           product_license: 'Product License',
+                          business_permit: 'Business Permit',
+                          health_cert: 'Health Certificate',
+                          lease: 'Lease Agreement',
+                          id_document: 'ID Document',
+                          proof_of_address: 'Proof of Address',
                         };
                         const resolvedUrl = resolveUploadUrl(doc.docUrl);
                         return (
@@ -942,6 +970,13 @@ export default function AdminSuppliersPage() {
                         );
                       })}
                     </div>
+                  </div>
+                ) : (
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+                      <FileText size={14} className="text-gray-400" /> Documents
+                    </h3>
+                    <p className="text-sm text-gray-400 italic">No documents uploaded yet</p>
                   </div>
                 )}
               </div>
