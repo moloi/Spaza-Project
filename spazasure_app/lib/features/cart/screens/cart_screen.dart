@@ -282,9 +282,12 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _placeOrder(CartProvider cart) async {
+    print('[CART] Place order tapped. Items: ${cart.items.length}');
+    if (cart.isEmpty) return;
     setState(() => _placing = true);
     try {
       final session = await AuthService.getSession();
+      print('[CART] Got session: ${session?.userId}');
       // Use the shop's registered address for delivery
       String deliveryAddress = session?.shopName ?? 'My Shop';
       try {
@@ -292,19 +295,27 @@ class _CartScreenState extends State<CartScreen> {
         deliveryAddress = profile.address.isNotEmpty ? profile.address : deliveryAddress;
       } catch (_) {}
 
+      print('[CART] Placing order: ${cart.items.length} items, delivery=$_deliveryOption, address=$deliveryAddress');
       final orderNumber = await OrderService.placeOrder(
         items: cart.items.toList(),
         deliveryOption: _deliveryOption,
         paymentMethod: _paymentMethod,
         deliveryAddress: deliveryAddress,
       );
+      print('[CART] Order placed: $orderNumber');
       cart.clear();
       if (!mounted) return;
       _showSuccess(orderNumber);
     } catch (e) {
+      print('[CART] ERROR: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to place order: $e'), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text('Failed: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
+        ),
       );
     } finally {
       if (mounted) setState(() => _placing = false);

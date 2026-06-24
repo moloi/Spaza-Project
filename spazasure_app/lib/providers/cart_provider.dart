@@ -21,11 +21,14 @@ class CartProvider extends ChangeNotifier {
   }
 
   void add(Product product, int quantity) {
+    // Enforce minimum order quantity
+    final minQty = product.minOrderQty > 0 ? product.minOrderQty : 1;
+    final qty = quantity < minQty ? minQty : quantity;
     final idx = _items.indexWhere((i) => i.product.id == product.id);
     if (idx >= 0) {
-      _items[idx].quantity += quantity;
+      _items[idx].quantity += qty;
     } else {
-      _items.add(CartItem(product: product, quantity: quantity));
+      _items.add(CartItem(product: product, quantity: qty));
     }
     notifyListeners();
   }
@@ -36,7 +39,9 @@ class CartProvider extends ChangeNotifier {
     if (quantity <= 0) {
       _items.removeAt(idx);
     } else {
-      _items[idx].quantity = quantity;
+      // Don't go below minimum order quantity
+      final minQty = _items[idx].product.minOrderQty > 0 ? _items[idx].product.minOrderQty : 1;
+      _items[idx].quantity = quantity < minQty ? minQty : quantity;
     }
     notifyListeners();
   }

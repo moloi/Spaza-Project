@@ -41,14 +41,17 @@ class ApiService {
 
   static Future<Map<String, dynamic>> post(String path, Map<String, dynamic> body, {bool auth = true}) async {
     try {
+      final url = '$baseUrl$path';
+      print('[API] POST $url');
       final res = await http.post(
-        Uri.parse('$baseUrl$path'),
+        Uri.parse(url),
         headers: await _headers(auth: auth),
         body: jsonEncode(body),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 30));
       return _handle(res);
     } catch (e) {
       if (e is ApiException) rethrow;
+      print('[API] POST error: $e');
       throw ApiException('Unable to connect to server', 0);
     }
   }
@@ -82,6 +85,10 @@ class ApiService {
   }
 
   static Map<String, dynamic> _handle(http.Response res) {
+    if (res.body.isEmpty) {
+      if (res.statusCode >= 200 && res.statusCode < 300) return {'success': true};
+      throw ApiException('Server returned empty response (${res.statusCode})', res.statusCode);
+    }
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     if (res.statusCode >= 200 && res.statusCode < 300) return body;
     final msg = body['message'] ?? body['error'] ?? 'Something went wrong';
