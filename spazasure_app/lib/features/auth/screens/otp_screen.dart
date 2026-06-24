@@ -19,30 +19,28 @@ class _OtpScreenState extends State<OtpScreen> {
   int _resendTimer = 30;
   final _pinController = TextEditingController();
   bool _autoFilled = false;
+  Map<String, dynamic>? _savedArgs;
 
   @override
   void initState() {
     super.initState();
     _startTimer();
-    // Listen to pin controller changes to keep _otp in sync
-    _pinController.addListener(() {
-      if (_pinController.text != _otp) {
-        setState(() => _otp = _pinController.text);
-      }
-    });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    // Save args on first access (they can be lost on web after rebuild)
+    if (_savedArgs == null) {
+      _savedArgs = (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
+      print('[OTP] Args received: phone=${_savedArgs!['phone']}, purpose=${_savedArgs!['purpose']}, hasOtp=${_savedArgs!.containsKey('otp')}');
+    }
     // Auto-fill OTP if provided (QA/dev mode)
     if (!_autoFilled) {
-      final args = _args(context);
-      final autoOtp = args['otp'] as String?;
+      final autoOtp = _savedArgs!['otp'] as String?;
       if (autoOtp != null && autoOtp.length == 6) {
         _autoFilled = true;
-        // Delay to allow the widget to fully build
-        WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
             _pinController.text = autoOtp;
             setState(() => _otp = autoOtp);
@@ -70,10 +68,10 @@ class _OtpScreenState extends State<OtpScreen> {
     });
   }
 
-  Map<String, dynamic> _args(BuildContext context) =>
-      (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ?? {};
+  Map<String, dynamic> _args(BuildContext context) => _savedArgs ?? {};
 
   Future<void> _verify(BuildContext context) async {
+    if (_isLoading) return;
     // Use pin controller text as source of truth
     final otpToVerify = _pinController.text.isNotEmpty ? _pinController.text : _otp;
     if (otpToVerify.length != 6) {
@@ -91,6 +89,19 @@ class _OtpScreenState extends State<OtpScreen> {
     final args = _args(context);
     final phone = args['phone'] as String? ?? '';
     final purpose = args['purpose'] as String? ?? 'login';
+    print('[OTP] Verifying: phone=$phone, purpose=$purpose, otp=$otpToVerify');
+
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Phone number missing. Please go back and try again.'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
@@ -104,12 +115,14 @@ class _OtpScreenState extends State<OtpScreen> {
           shopName: args['shopName'] as String? ?? '',
           address: args['address'] as String? ?? '',
           idNumber: args['idNumber'] as String?,
+          documents: args['documents'] as Map<String, dynamic>?,
         );
       }
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
     } catch (e) {
       if (!mounted) return;
+      setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString()),
@@ -118,8 +131,6 @@ class _OtpScreenState extends State<OtpScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -443,7 +454,7 @@ class _OtpScreenState extends State<OtpScreen> {
                               const Icon(Icons.lightbulb_outline, size: 16, color: Color(0xFFE65100)),
                               const SizedBox(width: 6),
                               Text(
-                                'Test code: 123456',
+                                'OTP will auto-fill from server',
                                 style: GoogleFonts.poppins(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,

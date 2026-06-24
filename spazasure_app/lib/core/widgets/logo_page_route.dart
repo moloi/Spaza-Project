@@ -11,8 +11,9 @@ class LogoPageRoute {
     Navigator.of(context).pushReplacement(logoRoute(page));
   }
 
-  static PageRouteBuilder logoRoute(Widget page) {
+  static PageRouteBuilder logoRoute(Widget page, {RouteSettings? settings}) {
     return PageRouteBuilder(
+      settings: settings,
       transitionDuration: const Duration(milliseconds: 600),
       reverseTransitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (_, __, ___) => page,

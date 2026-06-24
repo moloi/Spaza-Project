@@ -76,9 +76,9 @@ class SpazaSureApp extends StatelessWidget {
         final builder = pages[settings.name];
         if (builder == null) return null;
         if (settings.name == '/splash') {
-          return MaterialPageRoute(builder: (_) => builder());
+          return MaterialPageRoute(builder: (_) => builder(), settings: settings);
         }
-        return LogoPageRoute.logoRoute(builder());
+        return LogoPageRoute.logoRoute(builder(), settings: settings);
       },
     );
   }
