@@ -8,6 +8,7 @@ import 'package:spazasure_app/providers/auth_provider.dart';
 import 'package:spazasure_app/providers/cart_provider.dart';
 import 'package:spazasure_app/services/product_service.dart';
 import 'package:spazasure_app/services/order_service.dart';
+import 'package:spazasure_app/services/profile_service.dart';
 import 'package:spazasure_app/models/models.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -24,6 +25,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   List<Order> _activeOrders = [];
   bool _loadingProducts = true;
   String? _error;
+
+  // Dashboard stats from real data
+  int _orderCount = 0;
+  String _complianceStatus = '--';
+  String _rating = '--';
+  double _walletBalance = 0;
 
   @override
   void initState() {
@@ -46,10 +53,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         orders = await OrderService.getOrders();
       } catch (_) {}
 
+      // Load profile for compliance and rating
+      try {
+        final profile = await ProfileService.getProfile();
+        setState(() {
+          _complianceStatus = profile.complianceStatus == 'green' ? '100%'
+              : profile.complianceStatus == 'orange' ? '75%'
+              : profile.complianceStatus == 'incomplete' ? '0%'
+              : profile.complianceStatus;
+          _rating = profile.ratingAvg > 0 ? '${profile.ratingAvg.toStringAsFixed(1)}★' : 'New';
+        });
+      } catch (_) {}
+
       setState(() {
         _products = products;
         _categories = categories;
         _activeOrders = orders.where((o) => o.status != 'delivered' && o.status != 'cancelled').toList();
+        _orderCount = _activeOrders.length;
       });
     } catch (e) {
       setState(() => _error = 'Unable to load data. Pull down to refresh.');
@@ -247,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _walletVisible ? 'R 4,097.10' : 'R ••••••',
+                    _walletVisible ? 'R 0.00' : 'R ••••••',
                     style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -0.5),
                   ),
                   const SizedBox(height: 4),
@@ -306,11 +326,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Row(
         children: [
-          Expanded(child: _KpiCard(value: '3', label: 'Active Orders', color: AppColors.info, icon: Icons.receipt_long_rounded, trend: '+1 today')),
+          Expanded(child: _KpiCard(value: '$_orderCount', label: 'Active Orders', color: AppColors.info, icon: Icons.receipt_long_rounded, trend: _orderCount > 0 ? 'In progress' : 'No orders')),
           const SizedBox(width: 10),
-          Expanded(child: _KpiCard(value: '75%', label: 'Compliance', color: AppColors.warning, icon: Icons.verified_user_rounded, trend: '1 pending')),
+          Expanded(child: _KpiCard(value: _complianceStatus, label: 'Compliance', color: AppColors.warning, icon: Icons.verified_user_rounded, trend: _complianceStatus == '100%' ? 'Complete' : 'Upload docs')),
           const SizedBox(width: 10),
-          Expanded(child: _KpiCard(value: '4.8★', label: 'Rating', color: AppColors.success, icon: Icons.star_rounded, trend: 'Excellent')),
+          Expanded(child: _KpiCard(value: _rating, label: 'Rating', color: AppColors.success, icon: Icons.star_rounded, trend: _rating == 'New' ? 'No ratings yet' : 'Good')),
         ],
       ),
     ).animate().fadeIn(delay: 200.ms);
