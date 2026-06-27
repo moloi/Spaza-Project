@@ -93,9 +93,35 @@ jobs:
           username: ${{ secrets.QA_SSH_USER }}
           key:      ${{ secrets.QA_SSH_KEY }}
           script: |
+            mkdir -p /opt/spazasure
             cd /opt/spazasure
-            printf "QA_DB_PASSWORD=%s\nQA_JWT_SECRET=%s\nQA_AT_API_KEY=%s\nREGISTRY=ghcr.io/${{ github.repository_owner }}\nIMAGE_TAG=qa-${{ github.sha }}\n" \
-              "${{ secrets.QA_DB_PASSWORD }}" "${{ secrets.QA_JWT_SECRET }}" "${{ secrets.QA_AT_API_KEY }}" > .env.qa
-            docker compose -f docker-compose.qa.yml --env-file .env.qa pull
-            docker compose -f docker-compose.qa.yml --env-file .env.qa up -d --remove-orphans
+            
+            # Clone or pull latest source
+            if [ -d "SpazaSure.Backend/.git" ]; then
+              cd SpazaSure.Backend
+              git fetch origin develop
+              git reset --hard origin/develop
+            elif [ -d ".git" ]; then
+              git fetch origin develop
+              git reset --hard origin/develop
+            else
+              cd /opt/spazasure
+              rm -rf SpazaSure.Backend
+              git clone --branch develop https://github.com/${{ github.repository }}.git SpazaSure.Backend
+              cd SpazaSure.Backend
+            fi
+            
+            # Write env file
+            cat > .env.qa << EOF
+            QA_DB_PASSWORD=${{ secrets.QA_DB_PASSWORD }}
+            QA_JWT_SECRET=${{ secrets.QA_JWT_SECRET }}
+            QA_AT_API_KEY=${{ secrets.QA_AT_API_KEY }}
+            QA_RABBITMQ_PASSWORD=${{ secrets.QA_RABBITMQ_PASSWORD }}
+            EOF
+            
+            # Rebuild and restart all services
+            docker compose -f docker-compose.qa.yml --env-file .env.qa up -d --build --force-recreate --remove-orphans
+            
+            # Cleanup
             rm -f .env.qa
+            docker image prune -f
