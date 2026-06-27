@@ -8,6 +8,7 @@ import 'package:spazasure_app/features/cart/screens/cart_screen.dart';
 import 'package:spazasure_app/features/compliance/screens/compliance_screen.dart';
 import 'package:spazasure_app/features/profile/screens/profile_screen.dart';
 import 'package:spazasure_app/providers/cart_provider.dart';
+import 'package:spazasure_app/providers/product_provider.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -26,6 +27,14 @@ class _MainShellState extends State<MainShell> {
     ComplianceScreen(),
     ProfileScreen(),
   ];
+
+  void _onTabTapped(int index) {
+    // Refresh products when navigating back to Home tab
+    if (index == 0 && _currentIndex != 0) {
+      context.read<ProductProvider>().refreshAll();
+    }
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +71,7 @@ class _MainShellState extends State<MainShell> {
   Widget _navItem(int index, IconData icon, IconData activeIcon, String label, {int? badge, Color? badgeColor}) {
     final isActive = _currentIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
+      onTap: () => _onTabTapped(index),
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Eye, CheckCircle, XCircle, Truck, ShoppingCart, Clock, Package, DollarSign, Printer, ShieldAlert, FileText, ArrowRight } from 'lucide-react';
+import { Search, Eye, CheckCircle, XCircle, Truck, ShoppingCart, Clock, Package, DollarSign, Printer, ShieldAlert, FileText, ArrowRight, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { ordersApi, profileApi } from '../../services/api';
@@ -9,6 +9,7 @@ import PageLoader from '../../components/ui/PageLoader';
 import clsx from 'clsx';
 import OrderDetailModal from './OrderDetailModal';
 import OrderReceiptModal from './OrderReceiptModal';
+import DeliveryTrackingModal from './DeliveryTrackingModal';
 import { useOrderStore } from '../../store/orderStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -57,6 +58,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selected, setSelected] = useState<Order | null>(null);
   const [receiptOrder, setReceiptOrder] = useState<Order | null>(null);
+  const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const { fetchPendingCount } = useOrderStore();
 
@@ -284,6 +286,11 @@ export default function OrdersPage() {
                       <button onClick={() => setReceiptOrder(order)} className="btn-icon hover:text-emerald-600 hover:bg-emerald-50" title="View Receipt">
                         <Printer size={14} />
                       </button>
+                      {(order.status === 'processing' || order.status === 'dispatched' || order.status === 'delivered') && (
+                        <button onClick={() => setTrackingOrder(order)} className="btn-icon hover:text-blue-600 hover:bg-blue-50" title="Track Delivery">
+                          <MapPin size={14} />
+                        </button>
+                      )}
                       {order.status === 'pending' && (
                         <>
                           <button onClick={() => updateStatus(order.id, 'processing')} className="btn-icon hover:text-emerald-600 hover:bg-emerald-50" title="Accept Order">
@@ -314,6 +321,10 @@ export default function OrdersPage() {
 
       {receiptOrder && (
         <OrderReceiptModal order={receiptOrder} onClose={() => setReceiptOrder(null)} />
+      )}
+
+      {trackingOrder && (
+        <DeliveryTrackingModal order={trackingOrder} onClose={() => setTrackingOrder(null)} />
       )}
     </div>
   );

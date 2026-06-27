@@ -443,11 +443,11 @@ export default function ProductsPage() {
 
       {/* Compliance Alert Modal */}
       {showComplianceAlert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setShowComplianceAlert(false)} />
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md animate-slide-up overflow-hidden">
+          <div className="relative bg-white rounded-2xl shadow-card-lg w-full max-w-md max-h-[90vh] overflow-hidden flex flex-col animate-scale-in">
             {/* Red gradient header */}
-            <div className="bg-gradient-to-br from-red-600 to-red-700 p-6 text-center">
+            <div className="bg-gradient-to-br from-red-600 to-red-700 p-6 text-center flex-shrink-0">
               <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <ShieldAlert size={32} className="text-white" />
               </div>
@@ -456,7 +456,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Missing documents list */}
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1 overscroll-contain">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Missing Documents:</p>
               <div className="space-y-2.5">
                 {missingDocs.map(({ docType, label }) => {

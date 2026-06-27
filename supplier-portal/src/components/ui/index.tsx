@@ -170,14 +170,18 @@ export function Modal({ title, children, onClose, size = 'md' }: {
 }) {
   const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose} />
-      <div className={clsx('relative bg-white rounded-2xl shadow-card-lg w-full animate-slide-up', widths[size])}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose} />
+      <div className={clsx(
+        'relative bg-white rounded-2xl shadow-card-lg w-full flex flex-col max-h-[90vh] overflow-hidden',
+        'animate-scale-in',
+        widths[size]
+      )}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="text-base font-bold text-gray-900">{title}</h2>
           <button onClick={onClose} className="btn-icon"><X size={18} /></button>
         </div>
-        <div className="overflow-y-auto max-h-[80vh]">{children}</div>
+        <div className="overflow-y-auto flex-1 overscroll-contain">{children}</div>
       </div>
     </div>
   );

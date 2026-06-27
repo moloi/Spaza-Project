@@ -6,7 +6,7 @@ import 'package:spazasure_app/core/constants/app_text_styles.dart';
 import 'package:spazasure_app/core/widgets/product_card.dart';
 import 'package:spazasure_app/providers/auth_provider.dart';
 import 'package:spazasure_app/providers/cart_provider.dart';
-import 'package:spazasure_app/services/product_service.dart';
+import 'package:spazasure_app/providers/product_provider.dart';
 import 'package:spazasure_app/services/order_service.dart';
 import 'package:spazasure_app/services/profile_service.dart';
 import 'package:spazasure_app/models/models.dart';
@@ -18,10 +18,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   bool _walletVisible = false;
-  List<Product> _products = [];
-  List<Category> _categories = [];
   List<Order> _activeOrders = [];
   bool _loadingProducts = true;
   String? _error;
@@ -35,23 +33,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Auto-refresh when the app comes back to foreground
+    if (state == AppLifecycleState.resumed) {
+      context.read<ProductProvider>().onAppResumed();
+      _loadOrders();
+    }
   }
 
   Future<void> _loadData() async {
     setState(() { _loadingProducts = true; _error = null; });
     try {
-      final productsFuture = ProductService.getProducts(pageSize: 10);
-      final categoriesFuture = ProductService.getCategories();
+      // Products are now managed by ProductProvider (auto-refreshes)
+      final productProvider = context.read<ProductProvider>();
+      if (productProvider.homeProducts.isEmpty) {
+        await productProvider.loadInitial();
+      }
 
-      final products = await productsFuture;
-      final categories = await categoriesFuture;
-
-      // Orders may fail if user just registered and has no orders — that's fine
-      List<Order> orders = [];
-      try {
-        orders = await OrderService.getOrders();
-      } catch (_) {}
+      await _loadOrders();
 
       // Load profile for compliance and rating
       try {
@@ -64,13 +74,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           _rating = profile.ratingAvg > 0 ? '${profile.ratingAvg.toStringAsFixed(1)}★' : 'New';
         });
       } catch (_) {}
-
-      setState(() {
-        _products = products;
-        _categories = categories;
-        _activeOrders = orders.where((o) => o.status != 'delivered' && o.status != 'cancelled').toList();
-        _orderCount = _activeOrders.length;
-      });
     } catch (e) {
       setState(() => _error = 'Unable to load data. Pull down to refresh.');
     } finally {
@@ -78,54 +81,78 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     }
   }
 
+  Future<void> _loadOrders() async {
+    try {
+      final orders = await OrderService.getOrders();
+      setState(() {
+        _activeOrders = orders.where((o) => o.status != 'delivered' && o.status != 'cancelled').toList();
+        _orderCount = _activeOrders.length;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _onRefresh() async {
+    // Pull-to-refresh: force fresh data from backend
+    await context.read<ProductProvider>().refreshAll();
+    await _loadOrders();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final productProvider = context.watch<ProductProvider>();
+    final _products = productProvider.homeProducts;
+    final _categories = productProvider.categories;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F0),
       body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeader()),
-            SliverToBoxAdapter(child: _buildWalletCard()),
-            SliverToBoxAdapter(child: _buildKpiRow()),
-            SliverToBoxAdapter(child: _buildActiveOrder()),
-            SliverToBoxAdapter(child: _buildQuickActions()),
-            SliverToBoxAdapter(child: _buildSectionTitle('Shop by Category', onTap: () => Navigator.pushNamed(context, '/marketplace'))),
-            SliverToBoxAdapter(child: _buildCategories()),
-            SliverToBoxAdapter(child: _buildPromoBanner()),
-            SliverToBoxAdapter(child: _buildSectionTitle('Popular Products', onTap: () => Navigator.pushNamed(context, '/marketplace'))),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              sliver: _loadingProducts
-                  ? const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())))
-                  : SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, childAspectRatio: 0.62, crossAxisSpacing: 12, mainAxisSpacing: 12,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final product = _products[index];
-                    return ProductCard(
-                      product: product,
-                      onTap: () => Navigator.pushNamed(context, '/product', arguments: product),
-                      onAddToCart: () {
-                        context.read<CartProvider>().add(product, product.minOrderQty);
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text('${product.name} added to cart'),
-                          backgroundColor: AppColors.primary,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          action: SnackBarAction(label: 'VIEW CART', textColor: Colors.white, onPressed: () => Navigator.pushNamed(context, '/cart')),
-                        ));
-                      },
-                    );
-                  },
-                  childCount: _products.length,
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          color: AppColors.primary,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            slivers: [
+              SliverToBoxAdapter(child: _buildHeader()),
+              SliverToBoxAdapter(child: _buildWalletCard()),
+              SliverToBoxAdapter(child: _buildKpiRow()),
+              SliverToBoxAdapter(child: _buildActiveOrder()),
+              SliverToBoxAdapter(child: _buildQuickActions()),
+              SliverToBoxAdapter(child: _buildSectionTitle('Shop by Category', onTap: () => Navigator.pushNamed(context, '/marketplace'))),
+              SliverToBoxAdapter(child: _buildCategories()),
+              SliverToBoxAdapter(child: _buildPromoBanner()),
+              SliverToBoxAdapter(child: _buildSectionTitle('Popular Products', onTap: () => Navigator.pushNamed(context, '/marketplace'))),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                sliver: productProvider.loading && _products.isEmpty
+                    ? const SliverToBoxAdapter(child: Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())))
+                    : SliverGrid(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2, childAspectRatio: 0.62, crossAxisSpacing: 12, mainAxisSpacing: 12,
+                  ),
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final product = _products[index];
+                      return ProductCard(
+                        product: product,
+                        onTap: () => Navigator.pushNamed(context, '/product', arguments: product),
+                        onAddToCart: () {
+                          context.read<CartProvider>().add(product, product.minOrderQty);
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text('${product.name} added to cart'),
+                            backgroundColor: AppColors.primary,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            action: SnackBarAction(label: 'VIEW CART', textColor: Colors.white, onPressed: () => Navigator.pushNamed(context, '/cart')),
+                          ));
+                        },
+                      );
+                    },
+                    childCount: _products.length,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -498,6 +525,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   // ─── PIECE 6: CATEGORIES ─────────────────────────────────────────────────────
   Widget _buildCategories() {
+    final _categories = context.read<ProductProvider>().categories;
     final colors = [AppColors.primary, AppColors.secondary, AppColors.accent, AppColors.info, const Color(0xFF8E24AA), AppColors.error, const Color(0xFF00ACC1), const Color(0xFF6D4C41)];
     final icons = {
       'shopping_basket': Icons.shopping_basket, 'local_drink': Icons.local_drink,

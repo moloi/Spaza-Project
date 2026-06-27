@@ -654,9 +654,9 @@ export default function AdminSuppliersPage() {
 
         {/* ─── SUPPLIER DETAIL MODAL ─── */}
         {selectedSupplier && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedSupplier(null)} />
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col modal-slide-up overflow-hidden">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedSupplier(null)} />
+            <div className="relative bg-white rounded-2xl shadow-card-lg w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
               {/* Gradient Header */}
               <div className="relative bg-gradient-to-r from-blue-600 to-indigo-700 px-6 py-5 flex-shrink-0">
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPjwvc3ZnPg==')] opacity-60" />
@@ -824,9 +824,9 @@ export default function AdminSuppliersPage() {
 
         {/* ─── SPAZA OWNER DETAIL MODAL ─── */}
         {selectedSpaza && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedSpaza(null)} />
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col modal-slide-up overflow-hidden">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedSpaza(null)} />
+            <div className="relative bg-white rounded-2xl shadow-card-lg w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
               {/* Gradient Header */}
               <div className="relative bg-gradient-to-r from-purple-600 to-indigo-700 px-6 py-5 flex-shrink-0">
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPjwvc3ZnPg==')] opacity-60" />
@@ -1006,9 +1006,9 @@ export default function AdminSuppliersPage() {
 
         {/* ─── SUSPEND MODAL ─── */}
         {suspendTarget && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSuspendTarget(null)} />
-            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md modal-slide-up overflow-hidden">
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setSuspendTarget(null)} />
+            <div className="relative bg-white rounded-2xl shadow-card-lg w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
               {/* Red Gradient Header */}
               <div className="relative bg-gradient-to-r from-red-600 to-rose-700 px-6 py-5">
                 <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPjwvc3ZnPg==')] opacity-60" />

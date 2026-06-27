@@ -221,10 +221,11 @@ function DealDetailModal({ deal, onClose, onApprove }: { deal: GroupBuy; onClose
   const progress = deal.targetQty > 0 ? (deal.currentQty / deal.targetQty) * 100 : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-fade-in" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div className="relative bg-white rounded-2xl shadow-card-lg w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden animate-scale-in" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="px-6 py-5 border-b bg-gradient-to-r from-amber-50 to-orange-50">
+        <div className="px-6 py-5 border-b bg-gradient-to-r from-amber-50 to-orange-50 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
               <Users size={24} className="text-amber-600" />
@@ -237,7 +238,7 @@ function DealDetailModal({ deal, onClose, onApprove }: { deal: GroupBuy; onClose
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 overflow-y-auto flex-1 overscroll-contain">
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-gray-50 rounded-lg p-3 text-center">

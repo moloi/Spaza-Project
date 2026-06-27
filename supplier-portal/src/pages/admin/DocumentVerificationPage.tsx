@@ -496,9 +496,9 @@ export default function DocumentVerificationPage() {
 
       {/* ═══ DOCUMENT PREVIEW MODAL ═══ */}
       {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setPreviewDoc(null)} />
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden" style={{ animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setPreviewDoc(null)} />
+          <div className="relative bg-white rounded-2xl shadow-card-lg w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-white flex-shrink-0">
               <div className="flex items-center gap-3">
@@ -595,9 +595,9 @@ export default function DocumentVerificationPage() {
 
       {/* ═══ REJECT MODAL ═══ */}
       {rejectTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setRejectTarget(null)} />
-          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden" style={{ animation: 'slideUp 0.3s cubic-bezier(0.16,1,0.3,1)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setRejectTarget(null)} />
+          <div className="relative bg-white rounded-2xl shadow-card-lg w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-scale-in">
             <div className="px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-red-50 to-white">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">

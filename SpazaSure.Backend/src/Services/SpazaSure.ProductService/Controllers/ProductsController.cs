@@ -182,6 +182,23 @@ public class ProductsController(SpazaSureDbContext db) : ControllerBase
         var product = await db.Products.FirstOrDefaultAsync(p => p.Id == id && p.SupplierId == supplier.Id);
         if (product is null) return NotFound(ApiResponse.Fail("Product not found."));
 
+        // Check if product has associated order items — soft-delete instead of hard-delete
+        var hasOrders = await db.Set<OrderItem>().AnyAsync(oi => oi.ProductId == id);
+        if (hasOrders)
+        {
+            // Soft-delete: mark as unavailable so order history is preserved
+            product.IsAvailable = false;
+            product.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+            return Ok(ApiResponse.Ok("Product removed from listing."));
+        }
+
+        // No orders reference this product — safe to hard-delete
+        // Remove related QR codes first
+        var qrCodes = await db.Set<ProductQrCode>().Where(q => q.ProductId == id).ToListAsync();
+        if (qrCodes.Count > 0)
+            db.Set<ProductQrCode>().RemoveRange(qrCodes);
+
         db.Products.Remove(product);
         await db.SaveChangesAsync();
         return Ok(ApiResponse.Ok("Product deleted."));

@@ -158,12 +158,11 @@ export default function BarcodeModal({ product, onClose }: Props) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={onClose} />
 
         <div
-          className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-          style={{ animation: 'modalIn 0.25s cubic-bezier(0.34,1.56,0.64,1)' }}
+          className="relative bg-white rounded-2xl shadow-card-lg w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden animate-scale-in"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gray-50">
@@ -178,7 +177,7 @@ export default function BarcodeModal({ product, onClose }: Props) {
             </button>
           </div>
 
-          <div className="p-5 space-y-4">
+          <div className="p-5 space-y-4 overflow-y-auto flex-1 overscroll-contain">
             {loading ? (
               <div className="flex flex-col items-center gap-3 py-12">
                 <Loader2 size={28} className="text-indigo-600 animate-spin" />
@@ -276,12 +275,6 @@ export default function BarcodeModal({ product, onClose }: Props) {
         </div>
       </div>
 
-      <style>{`
-        @keyframes modalIn {
-          from { opacity: 0; transform: scale(0.92) translateY(12px); }
-          to   { opacity: 1; transform: scale(1) translateY(0); }
-        }
-      `}</style>
     </>
   );
 }
