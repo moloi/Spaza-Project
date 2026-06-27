@@ -77,14 +77,34 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<SpazaSureDbContext>();
-    if (!db.Roles.Any())
+    
+    // Auto-create database schema on startup
+    try
     {
-        db.Roles.AddRange(
-            new SpazaSure.Infrastructure.Entities.Role { Name = "supplier", Description = "Supplier role" },
-            new SpazaSure.Infrastructure.Entities.Role { Name = "spaza_owner", Description = "Spaza shop owner role" },
-            new SpazaSure.Infrastructure.Entities.Role { Name = "admin", Description = "Platform admin role" }
-        );
-        db.SaveChanges();
+        db.Database.EnsureCreated();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Failed to ensure database is created");
+    }
+
+    try
+    {
+        if (!db.Roles.Any())
+        {
+            db.Roles.AddRange(
+                new SpazaSure.Infrastructure.Entities.Role { Name = "supplier", Description = "Supplier role" },
+                new SpazaSure.Infrastructure.Entities.Role { Name = "spaza_owner", Description = "Spaza shop owner role" },
+                new SpazaSure.Infrastructure.Entities.Role { Name = "admin", Description = "Platform admin role" }
+            );
+            db.SaveChanges();
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Failed to seed roles");
     }
 } 
 

@@ -69,6 +69,14 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
+// Auto-apply database migrations on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<SpazaSureDbContext>();
+    try { db.Database.EnsureCreated(); }
+    catch { /* DB may already exist */ }
+}
+
 app.UseCors("Portal");
 app.UseSwagger();
 app.UseSwaggerUI(c =>

@@ -66,6 +66,14 @@ builder.Services.AddCors(opt =>
 
 var app = builder.Build();
 
+// Auto-apply database migrations on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<SpazaSureDbContext>();
+    try { db.Database.EnsureCreated(); }
+    catch { /* DB may already exist */ }
+}
+
 app.UseCors("SupplierPortal");
 app.UseSwagger();
 app.UseSwaggerUI(c =>
